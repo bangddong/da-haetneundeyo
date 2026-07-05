@@ -1,0 +1,15 @@
+{
+  "name": "da-haetneundeyo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/",
+    "build:docx": "esbuild src-docx/export-docx.src.mjs --bundle --platform=node --format=cjs --outfile=scripts/export-docx.cjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "docxtemplater": "^3.60.0",
+    "pizzip": "^3.2.0"
+  }
+}
