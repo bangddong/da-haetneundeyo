@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test",
     "build:docx": "esbuild src-docx/export-docx.src.mjs --bundle --platform=node --format=cjs --outfile=scripts/export-docx.cjs"
   },
   "devDependencies": {
