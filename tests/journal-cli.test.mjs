@@ -49,3 +49,10 @@ test('unknown command exits 1 with usage', () => {
   assert.equal(r.status, 1);
   assert.match(r.stderr, /usage/i);
 });
+
+test('range without --from/--to exits 1 with usage', () => {
+  const { env } = tmpEnv();
+  const r = run(env, 'range', '--from', '2026-07-01');
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /usage/i);
+});

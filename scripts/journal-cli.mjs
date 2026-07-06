@@ -18,6 +18,11 @@ switch (cmd) {
     out(sweepProjects(process.env, { days: Number(args.days ?? 30) }));
     break;
   case 'range': {
+    const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dayRe.test(args.from ?? '') || !dayRe.test(args.to ?? '')) {
+      console.error('usage: journal-cli range --from YYYY-MM-DD --to YYYY-MM-DD');
+      process.exit(1);
+    }
     sweepProjects(process.env); // 최종 안전망
     out(readRange(args.from, args.to, process.env));
     break;
