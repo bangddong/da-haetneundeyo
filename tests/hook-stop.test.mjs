@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findDigest } from '../lib/journal.mjs';
 import { userLine } from './fixtures.mjs';
@@ -43,4 +43,18 @@ test('missing transcript file still exits 0', () => {
     hook_event_name: 'Stop', session_id: 'sx', transcript_path: 'C:\\nope\\missing.jsonl',
   });
   assert.equal(r.status, 0);
+});
+
+test('exits 0 via fail-safe when stdin never closes', async () => {
+  const { env } = tmpEnv();
+  const child = spawn(process.execPath, [script], {
+    env: { ...env, DHND_HOOK_TIMEOUT_MS: '500' },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+  child.stdin.write('{"hook_event_name":"Stop"');   // no end(), no EOF
+  const code = await new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('hook did not exit within 5s')), 5000);
+    child.on('exit', (c) => { clearTimeout(t); resolve(c); });
+  });
+  assert.equal(code, 0);
 });
