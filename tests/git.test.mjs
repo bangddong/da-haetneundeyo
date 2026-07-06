@@ -28,7 +28,8 @@ test('returns commits since timestamp', () => {
 
 test('returns empty array when no commits in window', () => {
   const dir = makeRepo();
-  assert.deepEqual(commitsSince(dir, '2999-01-01T00:00:00Z'), []);
+  const future = new Date(Date.now() + 86400_000).toISOString();
+  assert.deepEqual(commitsSince(dir, future), []);
 });
 
 test('returns null for non-git directory', () => {
