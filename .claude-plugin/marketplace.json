@@ -1,5 +1,6 @@
 {
   "name": "da-haetneundeyo",
+  "description": "다 했는데요? — Claude Code 세션을 작업 일지와 주간/월간 업무 보고서로 바꿔주는 플러그인",
   "owner": { "name": "dhbang" },
   "plugins": [
     {
