@@ -7,7 +7,7 @@ description: 오늘/이번 주 작업 일지를 조회하고 항목을 보완한
 
 ## 조회
 
-1. 기간 결정: 인자가 없으면 오늘, "week"면 이번 주 월~일. 날짜(YYYY-MM-DD)나 기간이 오면 그대로.
+1. 기간 결정: 인자가 없으면 오늘, "week"면 이번 주 월~일, "지난주"/"last week"면 직전 ISO 주차(월~일). 날짜(YYYY-MM-DD)나 기간이 오면 그대로. 주 초(월·화)에 "week" 결과가 1~2건뿐이면 "지난주를 보려면 '지난주'라고 요청하세요"를 한 줄 안내.
 2. 다음을 실행해 일지를 가져온다 (sweep이 자동 포함되어 놓친 세션도 회수된다):
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO>
