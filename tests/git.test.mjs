@@ -32,6 +32,25 @@ test('returns empty array when no commits in window', () => {
   assert.deepEqual(commitsSince(dir, future), []);
 });
 
+test('until bound excludes commits after the session window', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
+  const g = (args, env) => execFileSync('git', ['-C', dir, ...args], {
+    encoding: 'utf8', env: { ...process.env, ...env },
+  });
+  g(['init']);
+  g(['config', 'user.email', 't@t.t']);
+  g(['config', 'user.name', 't']);
+  fs.writeFileSync(path.join(dir, 'a.txt'), '1');
+  g(['add', '-A']);
+  g(['commit', '-m', 'in-window'], { GIT_COMMITTER_DATE: '2026-01-01T10:00:00Z', GIT_AUTHOR_DATE: '2026-01-01T10:00:00Z' });
+  fs.writeFileSync(path.join(dir, 'a.txt'), '2');
+  g(['add', '-A']);
+  g(['commit', '-m', 'after-window'], { GIT_COMMITTER_DATE: '2026-01-02T10:00:00Z', GIT_AUTHOR_DATE: '2026-01-02T10:00:00Z' });
+  const commits = commitsSince(dir, '2026-01-01T00:00:00Z', '2026-01-01T23:59:59Z');
+  assert.equal(commits.length, 1);
+  assert.equal(commits[0].subject, 'in-window');
+});
+
 test('returns null for non-git directory', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-nogit-'));
   assert.equal(commitsSince(dir, '2020-01-01T00:00:00Z'), null);
