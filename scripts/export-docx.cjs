@@ -16081,11 +16081,18 @@ try {
     delimiters: { start: "{", end: "}" },
     nullGetter: () => ""
   });
-  doc.render(JSON.parse(import_node_fs.default.readFileSync(args.data, "utf8")));
+  doc.render(JSON.parse(import_node_fs.default.readFileSync(args.data, "utf8").replace(/^﻿/, "")));
   import_node_fs.default.writeFileSync(args.out, doc.getZip().generate({ type: "nodebuffer" }));
   console.log(JSON.stringify({ ok: true, out: args.out }));
 } catch (err) {
-  console.error(`[da-haetneundeyo] docx export failed: ${err?.message ?? err}`);
+  if (err?.properties?.errors) {
+    console.error(`[da-haetneundeyo] docx export failed: ${err?.message ?? err}`);
+    for (const subErr of err.properties.errors) {
+      console.error(`[da-haetneundeyo] ${subErr?.properties?.explanation ?? subErr?.message ?? subErr}`);
+    }
+  } else {
+    console.error(`[da-haetneundeyo] docx export failed: ${err?.message ?? err}`);
+  }
   process.exit(1);
 }
 /*! Bundled license information:

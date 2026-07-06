@@ -36,7 +36,7 @@ AI(Claude Code)로 대부분의 업무를 진행하면서 개발자는 실행자
 최근 48시간 세션은 작업 일지에 반영했습니다.
 사용자에게 다음을 안내하세요: 지난 30일 세션 기록을 일지로 백필하려면
 "node ".../scripts/journal-cli.mjs" backfill --days 30" 을 실행하면 되며
-(토큰 소모 없음, 수 초 소요), 원하는지 한 번만 물어보세요.
+(토큰 소모 없음, 최대 1-2분 소요 (세션 수에 따라)), 원하는지 한 번만 물어보세요.
 이후 /worklog, /report weekly 를 소개하세요.
 ```
 
@@ -112,7 +112,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <
 
 ```mermaid
 flowchart LR
-    A[Stop 훅\n매 턴마다] -->|증분 파싱, ~30ms/턴, 토큰 0| J[(저널 JSONL\n~/.claude/da-haetneundeyo/journal/)]
+    A[Stop 훅\n매 턴마다] -->|증분 파싱(설계 목표, 실제 지연은 Node 기동 시간에 좌우)·토큰 0| J[(저널 JSONL\n~/.claude/da-haetneundeyo/journal/)]
     B[SessionStart 훅\n세션 시작 시] -->|놓친 세션 재조정 스윕| J
     C[/worklog, /report 실행/] -->|최종 안전망 스윕| J
     J --> D{/report, /worklog, /recall}

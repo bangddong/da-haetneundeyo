@@ -45,6 +45,21 @@ test('fills placeholder in docx template', () => {
   assert.doesNotMatch(xml, /\{금주실적\}/);
 });
 
+test('fills placeholder when data JSON has a leading BOM', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-docx-'));
+  const template = makeFixtureDocx(dir);
+  const dataFile = path.join(dir, 'data.json');
+  fs.writeFileSync(dataFile, '﻿' + JSON.stringify({ 금주실적: '결재선 버그 수정 (b2c3d4e)' }));
+  const outFile = path.join(dir, 'out.docx');
+  const r = spawnSync(process.execPath, [script,
+    '--template', template, '--data', dataFile, '--out', outFile], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const outZip = new PizZip(fs.readFileSync(outFile));
+  const xml = outZip.file('word/document.xml').asText();
+  assert.match(xml, /결재선 버그 수정/);
+  assert.doesNotMatch(xml, /\{금주실적\}/);
+});
+
 test('missing args exit 1 with usage', () => {
   const r = spawnSync(process.execPath, [script], { encoding: 'utf8' });
   assert.equal(r.status, 1);
