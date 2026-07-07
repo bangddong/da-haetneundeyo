@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { userLine } from './fixtures.mjs';
+import { userLine, assistantToolUse } from './fixtures.mjs';
 import { tmpEnv } from './helpers.mjs';
 
 const script = fileURLToPath(new URL('../scripts/journal-cli.mjs', import.meta.url));
@@ -15,6 +15,24 @@ function seed(env) {
   const dir = path.join(env.CLAUDE_CONFIG_DIR, 'projects', 'D--p');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 's1.jsonl'), userLine('CLI 테스트') + '\n');
+}
+
+function seedWorkAndQa(env) {
+  const dir = path.join(env.CLAUDE_CONFIG_DIR, 'projects', 'D--p');
+  fs.mkdirSync(dir, { recursive: true });
+  // qa: 요청만 있고 파일 수정 없음
+  fs.writeFileSync(
+    path.join(dir, 'qa1.jsonl'),
+    userLine('질문만 했어요', { sessionId: 'qa1' }) + '\n',
+  );
+  // work: Edit tool_use 포함
+  fs.writeFileSync(
+    path.join(dir, 'work1.jsonl'),
+    [
+      userLine('버그 고쳐줘', { sessionId: 'work1' }),
+      assistantToolUse('Edit', { file_path: 'D:\\a.java' }, { sessionId: 'work1' }),
+    ].join('\n') + '\n',
+  );
 }
 
 test('backfill then range returns seeded session', () => {
@@ -55,4 +73,41 @@ test('range without --from/--to exits 1 with usage', () => {
   const r = run(env, 'range', '--from', '2026-07-01');
   assert.equal(r.status, 1);
   assert.match(r.stderr, /usage/i);
+});
+
+test('range --kind work filters to work sessions only', () => {
+  const { env } = tmpEnv();
+  seedWorkAndQa(env);
+  run(env, 'backfill', '--days', '30');
+  const r = run(env, 'range', '--from', '2026-07-01', '--to', '2026-07-05', '--kind', 'work');
+  assert.equal(r.status, 0);
+  const entries = JSON.parse(r.stdout);
+  assert.deepEqual(entries.map((d) => d.sessionId), ['work1']);
+  assert.ok(entries.every((d) => d.kind === 'work'));
+});
+
+test('range --kind qa filters to qa sessions only', () => {
+  const { env } = tmpEnv();
+  seedWorkAndQa(env);
+  run(env, 'backfill', '--days', '30');
+  const r = run(env, 'range', '--from', '2026-07-01', '--to', '2026-07-05', '--kind', 'qa');
+  assert.equal(r.status, 0);
+  const entries = JSON.parse(r.stdout);
+  assert.deepEqual(entries.map((d) => d.sessionId), ['qa1']);
+});
+
+test('range --kind with invalid value exits 1 with usage', () => {
+  const { env } = tmpEnv();
+  const r = run(env, 'range', '--from', '2026-07-01', '--to', '2026-07-05', '--kind', 'bogus');
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /usage/i);
+});
+
+test('range without --kind returns all sessions (existing behavior)', () => {
+  const { env } = tmpEnv();
+  seedWorkAndQa(env);
+  run(env, 'backfill', '--days', '30');
+  const r = run(env, 'range', '--from', '2026-07-01', '--to', '2026-07-05');
+  const entries = JSON.parse(r.stdout);
+  assert.deepEqual(entries.map((d) => d.sessionId).sort(), ['qa1', 'work1']);
 });

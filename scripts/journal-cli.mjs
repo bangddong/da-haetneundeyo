@@ -19,12 +19,14 @@ switch (cmd) {
     break;
   case 'range': {
     const dayRe = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dayRe.test(args.from ?? '') || !dayRe.test(args.to ?? '')) {
-      console.error('usage: journal-cli range --from YYYY-MM-DD --to YYYY-MM-DD');
+    const kindRe = /^(work|qa)$/;
+    if (!dayRe.test(args.from ?? '') || !dayRe.test(args.to ?? '') || (args.kind != null && !kindRe.test(args.kind))) {
+      console.error('usage: journal-cli range --from YYYY-MM-DD --to YYYY-MM-DD [--kind work|qa]');
       process.exit(1);
     }
     sweepProjects(process.env); // 최종 안전망
-    out(readRange(args.from, args.to, process.env));
+    const entries = readRange(args.from, args.to, process.env);
+    out(args.kind ? entries.filter((d) => d.kind === args.kind) : entries);
     break;
   }
   case 'note':
@@ -34,6 +36,6 @@ switch (cmd) {
     out({ ok: setField(args.session, args.day, 'kind', args.value, process.env) });
     break;
   default:
-    console.error('usage: journal-cli <sweep|backfill --days N|range --from D --to D|note --session S --day D --text T|kind --session S --day D --value V>');
+    console.error('usage: journal-cli <sweep|backfill --days N|range --from D --to D [--kind work|qa]|note --session S --day D --text T|kind --session S --day D --value V>');
     process.exit(1);
 }

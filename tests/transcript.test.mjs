@@ -28,18 +28,40 @@ test('collects user requests, cwd, branch, timestamps', () => {
   assert.equal(d.end, '2026-07-03T02:00:00Z');
 });
 
-test('noise filters: sidechain, local command, tool_result, oversize, meta', () => {
-  const big = 'x'.repeat(3000);
+test('noise filters: sidechain, local command, tool_result, meta', () => {
   const d = build([
     userLine('진짜 요청'),
     userLine('(local command) ls', {}),
-    userLine(big),
     userLine('사이드체인', { isSidechain: true }),
     userLine('메타', { isMeta: true }),
     userLine([{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }]),
     queueOp(),
   ]);
   assert.deepEqual(d.requests, ['진짜 요청']);
+});
+
+test('noise filters: expanded exclude prefixes (task-notification, system-reminder, interrupted)', () => {
+  const d = build([
+    userLine('진짜 요청'),
+    userLine('<task-notification>백그라운드 완료</task-notification>'),
+    userLine('<system-reminder>컨텍스트 알림</system-reminder>'),
+    userLine('[Request interrupted by user]'),
+    userLine('  (local command) 앞뒤 공백'), // trim 후 startsWith 검사
+  ]);
+  assert.deepEqual(d.requests, ['진짜 요청']);
+});
+
+test('oversize request is truncated and preserved, not excluded', () => {
+  const big = 'x'.repeat(2001);
+  const d = build([userLine(big)]);
+  assert.equal(d.requests.length, 1);
+  assert.equal(d.requests[0], `${'x'.repeat(300)} …(전체 2001자 생략)`);
+});
+
+test('request at exactly noiseMaxChars is not truncated', () => {
+  const exact = 'y'.repeat(2000);
+  const d = build([userLine(exact)]);
+  assert.deepEqual(d.requests, [exact]);
 });
 
 test('extracts filesEdited from edit tools and commands from Bash (dedup)', () => {
