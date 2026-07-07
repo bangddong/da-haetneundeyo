@@ -15,4 +15,11 @@ export const assistantToolUse = (name, input, extra = {}) =>
     ...extra,
   }));
 
+export const assistantText = (text, extra = {}) =>
+  JSON.stringify(base({
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'text', text }] },
+    ...extra,
+  }));
+
 export const queueOp = () => JSON.stringify({ type: 'queue-operation', operation: 'enqueue' });

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { sweepProjects } from '../lib/capture.mjs';
 import { readRange, setField } from '../lib/journal.mjs';
+import { readArchive } from '../lib/archive.mjs';
 
 const [cmd, ...rest] = process.argv.slice(2);
 const args = {};
@@ -35,7 +36,16 @@ switch (cmd) {
   case 'kind':
     out({ ok: setField(args.session, args.day, 'kind', args.value, process.env) });
     break;
+  case 'archive-read': {
+    const records = readArchive(args.session, args.day, process.env);
+    if (records === null) {
+      out({ ok: false, reason: 'not archived' });
+    } else {
+      for (const r of records) process.stdout.write(JSON.stringify(r) + '\n');
+    }
+    break;
+  }
   default:
-    console.error('usage: journal-cli <sweep|backfill --days N|range --from D --to D [--kind work|qa]|note --session S --day D --text T|kind --session S --day D --value V>');
+    console.error('usage: journal-cli <sweep|backfill --days N|range --from D --to D [--kind work|qa]|note --session S --day D --text T|kind --session S --day D --value V|archive-read --session S --day D>');
     process.exit(1);
 }
