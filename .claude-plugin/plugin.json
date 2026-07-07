@@ -1,6 +1,6 @@
 {
   "name": "da-haetneundeyo",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "다 했는데요? — AI로 진행한 작업을 자동 기록해 주간/월간 업무 보고를 만들어주는 Claude Code 플러그인",
   "author": { "name": "dhbang" },
   "license": "MIT"
