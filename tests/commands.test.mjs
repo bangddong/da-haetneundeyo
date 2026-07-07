@@ -14,7 +14,7 @@ for (const { file, skill } of commands) {
     const full = fileURLToPath(new URL(`../commands/${file}`, import.meta.url));
     assert.ok(fs.existsSync(full), `${file} should exist`);
     const raw = fs.readFileSync(full, 'utf8');
-    assert.match(raw, /^---\n[\s\S]*?description:\s*.+\n[\s\S]*?---/, 'has description in frontmatter');
+    assert.match(raw, /^---\r?\n[\s\S]*?description:\s*.+\r?\n[\s\S]*?---/, 'has description in frontmatter');
     assert.ok(raw.includes(skill), `body mentions ${skill}`);
   });
 }
