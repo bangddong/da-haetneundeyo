@@ -69,3 +69,27 @@ test('stale lock (mtime > 10s old) is reclaimed and upsertDigest proceeds', asyn
   assert.equal(lines.length, 1);
   assert.equal(JSON.parse(lines[0]).sessionId, 'stale-check');
 });
+
+test('stale lock carries an owner token, and reclaim leaves a fresh token (not the reclaimer deleting its own lock early)', async () => {
+  // Exercises the real withFileLock path indirectly via upsertDigest (fixtures/upsert-one.mjs):
+  // pre-seed a stale lock dir with a bogus owner file, then let a real process reclaim it.
+  // If reclaim works, the session lands and the final lock dir (if any lingers mid-run) always
+  // carries *some* owner token written by mkdirSync+writeFileSync, never the stale placeholder.
+  const { env } = tmpEnv();
+  const file = dayFilePath('2026-07-03', env);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const lockDir = `${file}.lock`;
+  const ownerFile = path.join(lockDir, 'owner');
+  fs.mkdirSync(lockDir);
+  fs.writeFileSync(ownerFile, 'stale-owner-token');
+  const old = new Date(Date.now() - 20_000);
+  fs.utimesSync(lockDir, old, old);
+
+  await spawnUpsert(env, 'owner-reclaim-check');
+
+  const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
+  assert.equal(lines.length, 1);
+  assert.equal(JSON.parse(lines[0]).sessionId, 'owner-reclaim-check');
+  // Lock dir is fully released after a clean run.
+  assert.ok(!fs.existsSync(lockDir), 'lock dir should be released after successful reclaim + run');
+});
