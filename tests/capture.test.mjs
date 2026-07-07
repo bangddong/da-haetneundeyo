@@ -1,11 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { captureTranscript, sweepProjects } from '../lib/capture.mjs';
 import { findDigest, loadState } from '../lib/journal.mjs';
 import { userLine, assistantToolUse } from './fixtures.mjs';
 import { tmpEnv } from './helpers.mjs';
+
+function makeRepo() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-capture-git-'));
+  const g = (...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+  g('init');
+  g('config', 'user.email', 'repo-author@t.t');
+  g('config', 'user.name', 'repo-author');
+  fs.writeFileSync(path.join(dir, 'a.txt'), '1');
+  g('add', '-A');
+  g('commit', '-m', 'feat: 초기 커밋');
+  return dir;
+}
 
 function writeTranscript(env, sessionId, lines) {
   const dir = path.join(env.CLAUDE_CONFIG_DIR, 'projects', 'D--p');
@@ -59,6 +73,15 @@ test('complete flag marks digest completed', () => {
   const file = writeTranscript(env, 's1', [userLine('요청1')]);
   const d = captureTranscript({ sessionId: 's1', transcriptPath: file, complete: true }, env);
   assert.equal(d.completed, true);
+});
+
+test('caches resolved repo author email into state.authors', () => {
+  const { env } = tmpEnv();
+  const repoDir = makeRepo();
+  const file = writeTranscript(env, 's1', [userLine('버그 고쳐줘', { cwd: repoDir })]);
+  captureTranscript({ sessionId: 's1', transcriptPath: file }, env);
+  const state = loadState(env);
+  assert.equal(state.authors[repoDir], 'repo-author@t.t');
 });
 
 test('sweepProjects picks up unprocessed transcripts, skips agent-*.jsonl', () => {

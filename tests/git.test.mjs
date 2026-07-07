@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { commitsSince } from '../lib/git.mjs';
+import { commitsSince, repoAuthorEmail } from '../lib/git.mjs';
 
 function makeRepo() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
@@ -54,4 +54,40 @@ test('until bound excludes commits after the session window', () => {
 test('returns null for non-git directory', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-nogit-'));
   assert.equal(commitsSince(dir, '2020-01-01T00:00:00Z'), null);
+});
+
+test('author filter: only matching author commits are returned', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
+  const g = (...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+  g('init');
+  g('-c', 'user.email=a@t.t', '-c', 'user.name=a', 'commit', '--allow-empty', '-m', 'from-a');
+  g('-c', 'user.email=b@t.t', '-c', 'user.name=b', 'commit', '--allow-empty', '-m', 'from-b');
+  const commits = commitsSince(dir, '2020-01-01T00:00:00Z', undefined, 'a@t.t');
+  assert.equal(commits.length, 1);
+  assert.equal(commits[0].subject, 'from-a');
+});
+
+test('repoAuthorEmail returns configured user.email', () => {
+  const dir = makeRepo();
+  assert.equal(repoAuthorEmail(dir), 't@t.t');
+});
+
+test('repoAuthorEmail returns null for non-git directory', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-nogit-'));
+  assert.equal(repoAuthorEmail(dir), null);
+});
+
+test('repoAuthorEmail falls back to global config when repo has no local email', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
+  execFileSync('git', ['-C', dir, 'init'], { encoding: 'utf8' });
+  const globalCfg = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-cfg-')), 'gitconfig');
+  fs.writeFileSync(globalCfg, '[user]\n\temail = global@t.t\n');
+  const saved = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_GLOBAL = globalCfg;
+  try {
+    assert.equal(repoAuthorEmail(dir), 'global@t.t');
+  } finally {
+    if (saved === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = saved;
+  }
 });

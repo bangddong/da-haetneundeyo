@@ -19,7 +19,15 @@ AI(Claude Code)로 대부분의 업무를 진행하면서 개발자는 실행자
 ## 설치
 
 ```
-/plugin marketplace add <이 저장소 경로 또는 URL>
+/plugin marketplace add bangddong/da-haetneundeyo
+/plugin install da-haetneundeyo
+```
+
+비공개 기간에는 저장소를 클론 후 로컬 경로로 추가하세요:
+
+```
+git clone <저장소 URL> <로컬 경로>
+/plugin marketplace add <로컬 경로>
 /plugin install da-haetneundeyo
 ```
 
@@ -29,24 +37,29 @@ AI(Claude Code)로 대부분의 업무를 진행하면서 개발자는 실행자
 
 ### 1. 온보딩 백필 안내
 
-플러그인이 처음 실행되면(`SessionStart` 훅) 최근 48시간 세션은 자동으로 일지에 반영되고, 다음과 같은 안내가 표시됩니다:
+플러그인이 처음 실행되면(`SessionStart` 훅) 최근 7일 세션은 자동으로 일지에 반영되고, 다음과 같은 안내가 표시됩니다:
 
 ```
-[da-haetneundeyo] 다 했는데요? 플러그인이 처음 실행되었습니다.
-최근 48시간 세션은 작업 일지에 반영했습니다.
-사용자에게 다음을 안내하세요: 지난 30일 세션 기록을 일지로 백필하려면
-"node ".../scripts/journal-cli.mjs" backfill --days 30" 을 실행하면 되며
-(토큰 소모 없음, 최대 1-2분 소요 (세션 수에 따라)), 원하는지 한 번만 물어보세요.
-이후 /worklog, /report weekly 를 소개하세요.
+[da-haetneundeyo] "다 했는데요?" 플러그인이 처음 실행되었습니다. 최근 7일 세션을 작업 일지에 반영했습니다.
+프라이버시 고지: 이후 모든 세션의 요청 내용(원문 프롬프트 포함)·수정 파일·커밋 정보가 ~/.claude/da-haetneundeyo 에 로컬 저장됩니다.
+외부 전송은 없으며, 디렉토리 삭제로 완전 제거됩니다 (README 프라이버시 섹션 참고).
+사용자에게 다음을 안내하세요: 백필 전에는 일지와 보고서가 최근 7일만 커버합니다. 지난 30일을 반영하려면
+"node ".../scripts/journal-cli.mjs" backfill --days 30" 실행 (토큰 소모 없음, 최대 1-2분).
+원하는지 한 번만 물어보고, 이후 "오늘 뭐 했지?", "주간보고 만들어줘" 같은 자연어 사용법을 소개하세요.
 ```
 
-원하면 승인 한 번으로 지난 30일치 세션이 일지로 편입되어, **설치 당일에도 바로 첫 보고서를 만들 수 있습니다.**
+백필 전에는 최근 7일만 보입니다 — **지난 30일 백필을 권장합니다.** 원하면 승인 한 번으로 지난 30일치 세션이 일지로 편입되어, **설치 당일에도 바로 첫 보고서를 만들 수 있습니다.**
 
-### 2. `/worklog` — 오늘/이번 주 작업 일지 조회
+> ⚠️ 주말 직후(월요일 등)에 설치하면 7일 스윕도 주말을 포함하므로, 세션이 거의 없던 경우 일지가 비어 보일 수 있습니다 — 이럴 때도 30일 백필을 권장합니다.
+
+### 2. 오늘/이번 주 작업 일지 조회
 
 ```
-/worklog
+오늘 뭐 했지?
+지난주에 뭐 했지?
 ```
+
+이렇게도 가능: `/worklog`
 
 예시 출력:
 
@@ -57,14 +70,28 @@ AI(Claude Code)로 대부분의 업무를 진행하면서 개발자는 실행자
 · [demo-api 17:00-17:05] MyBatis 매핑 질의 (kind=qa — 보고서 제외)
 ```
 
-모호한 항목은 한 줄 메모를 보완할 수 있습니다:
+모호한 항목은 자연어로 메모·분류를 보완할 수 있습니다:
+
+```
+두 번째 항목에 "결재선 버그 건"이라고 메모 달아줘
+세 번째 항목은 질의가 아니라 작업으로 재분류해줘
+```
+
+(참고: 내부적으로는 아래 CLI를 실행합니다)
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" note --session <ID> --day <YYYY-MM-DD> --text "<메모>"
 node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <YYYY-MM-DD> --value <work|qa>
 ```
 
-### 3. `/report weekly` — 주간 업무 보고서 생성
+### 3. 주간/월간 업무 보고서 생성
+
+```
+주간보고 만들어줘
+지난주 주간보고 만들어줘
+```
+
+이렇게도 가능: `/report weekly`
 
 ```
 /report weekly
@@ -88,7 +115,15 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <
 
 `--format docx`는 회사 양식(.docx)에 값을 채워 넣습니다 — 아래 "회사 양식 등록" 참고. 양식을 등록하지 않았다면 md만 저장하고 `/report setup` 안내가 나옵니다.
 
-### 4. `/recall <질문>` — 과거 작업 검색
+> **모델 가이드**: 일지 기록·검색 인덱싱은 결정적 코드로 동작해 모델 성능과 무관합니다. 반면 보고서 문장 생성 품질은 모델 영향을 받으므로, `/report`(주간/월간보고) 실행 시에만 Sonnet 이상 모델을 권장합니다 — 주 1회 정도라 비용 부담은 낮습니다.
+
+### 4. 과거 작업 검색
+
+```
+그때 SAP 타임아웃 어떻게 고쳤지?
+```
+
+이렇게도 가능: `/recall <질문>`
 
 ```
 /recall MyBatis 페이징 어떻게 했지
@@ -128,6 +163,20 @@ flowchart LR
 `SessionEnd` 훅은 보너스로 세션 완료 마킹만 수행합니다. upsert는 멱등이라 같은 세션을 여러 번 재처리해도 저널에 중복이 생기지 않습니다.
 
 작업 분류(`kind`)는 자동입니다: 세션 중 수정한 파일과 커밋이 모두 없으면 `qa`(보고서에서 기본 제외), 하나라도 있으면 `work`로 분류됩니다. `/worklog`의 `kind` 명령으로 재분류할 수 있습니다.
+
+커밋 귀속 규칙: 세션에 연결되는 커밋은 세션 시간 창(시작~종료) 안에 있으면서, **본인이 작성한 커밋만** 포함합니다 — 저장소의 git `user.email` 기준으로 필터링하며, `config.json`의 `gitAuthor` 값이 있으면 그 값으로 override합니다. 머지 커밋은 제외됩니다(`--no-merges`). 그래도 시간상 겹쳐 애매하게 섞이는 항목은 `⚠️추정` 플래그로 표시되니, 보고서 제출 전 확인해 주세요.
+
+## 권한 프롬프트에 관하여
+
+- **훅(Stop/SessionStart/SessionEnd)**은 플러그인 설치 동의로 자동 실행되며, 실행마다 별도 권한 프롬프트가 뜨지 않습니다.
+- 반면 `/worklog`, `/report`, `/recall` **스킬 실행 중의 Bash·파일 쓰기**는 Claude Code의 일반 권한 검사를 그대로 받습니다 — 저널 조회(`journal-cli.mjs`), 검색(`rg`), 커밋 상세 조회(`git show`) 등을 실행할 때마다 승인을 요청받는 것은 **정상 동작**입니다.
+- 매번 승인하기가 번거롭다면 `~/.claude/settings.json`에 다음과 같이 허용 목록을 추가하세요:
+
+```json
+{
+  "permissions": { "allow": ["Bash(node *da-haetneundeyo*)", "Bash(rg * *da-haetneundeyo*)"] }
+}
+```
 
 ## 프라이버시
 
