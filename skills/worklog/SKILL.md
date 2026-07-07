@@ -12,6 +12,7 @@ description: 오늘/이번 주 작업 일지를 조회하고 항목을 보완한
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO>
    ```
+   필요하면 `--kind work|qa`로 필터링할 수 있다 (기본은 `--kind` 생략 = 전체).
 3. 출력 형식 (시간순, 프로젝트는 config.json의 projectMap 이름으로 표시):
    ```
    📓 7/3 (금) — 세션 N건 (작업 N · 질의 N), 커밋 N건
