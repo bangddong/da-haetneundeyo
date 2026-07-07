@@ -69,6 +69,33 @@ test('archiveSession skips isSidechain records and returns false if unchanged (e
   assert.equal(again, false);
 });
 
+test('archiveSession rewrites when transcript is touched newer, and gz reflects the update', () => {
+  const { env } = tmpEnv();
+  const file = writeTranscript(env, 's1', [
+    userLine('첫 번째 요청'),
+  ]);
+
+  const first = archiveSession(file, 's1', '2026-07-03', env);
+  assert.equal(first, true);
+  const gz = archivePath(env, '2026-07-03', 's1');
+  const rawFirst = zlib.gunzipSync(fs.readFileSync(gz)).toString('utf8');
+  assert.ok(rawFirst.includes('첫 번째 요청'));
+  assert.ok(!rawFirst.includes('두 번째 요청'));
+
+  // Simulate the transcript being appended to (e.g. more of the conversation happened)
+  // after the first archive was written, then make its mtime newer than the archive.
+  fs.appendFileSync(file, userLine('두 번째 요청') + '\n');
+  const future = new Date(Date.now() + 10_000);
+  fs.utimesSync(file, future, future);
+
+  const second = archiveSession(file, 's1', '2026-07-03', env);
+  assert.equal(second, true, 'archiveSession should rewrite when transcript is newer than existing archive');
+
+  const rawSecond = zlib.gunzipSync(fs.readFileSync(gz)).toString('utf8');
+  assert.ok(rawSecond.includes('첫 번째 요청'));
+  assert.ok(rawSecond.includes('두 번째 요청'), 'newly appended request should appear after re-archive');
+});
+
 test('config.archive=false: sweep does not create archives', () => {
   const { env } = tmpEnv();
   writeTranscript(env, 's1', [
@@ -119,4 +146,25 @@ test('archive-read CLI: missing archive returns ok:false with exit 0', () => {
   const r = run(env, 'archive-read', '--session', 'nope', '--day', '2026-07-03');
   assert.equal(r.status, 0);
   assert.deepEqual(JSON.parse(r.stdout), { ok: false, reason: 'not archived' });
+});
+
+test('kind --value work archives the session immediately when config.archive is true', () => {
+  const { env } = tmpEnv();
+  fs.mkdirSync(env.DHND_DATA_DIR, { recursive: true });
+  fs.writeFileSync(path.join(env.DHND_DATA_DIR, 'config.json'), JSON.stringify({ archive: true }));
+
+  writeTranscript(env, 'qa1', [
+    userLine('질문만 했어요', { sessionId: 'qa1' }),
+  ]);
+  // qa-classified session lands in the journal via a normal sweep (kind=qa, no archive yet).
+  sweepProjects(env, { sinceMs: 0 });
+  assert.ok(findDigest('qa1', '2026-07-03', env));
+  assert.ok(!fs.existsSync(archivePath(env, '2026-07-03', 'qa1')));
+
+  // User later reclassifies it as work via the CLI.
+  const r = run(env, 'kind', '--session', 'qa1', '--day', '2026-07-03', '--value', 'work');
+  assert.equal(r.status, 0);
+  assert.deepEqual(JSON.parse(r.stdout), { ok: true });
+
+  assert.ok(fs.existsSync(archivePath(env, '2026-07-03', 'qa1')), 'reclassified session should be archived immediately');
 });

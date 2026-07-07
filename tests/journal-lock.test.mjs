@@ -93,3 +93,33 @@ test('stale lock carries an owner token, and reclaim leaves a fresh token (not t
   // Lock dir is fully released after a clean run.
   assert.ok(!fs.existsSync(lockDir), 'lock dir should be released after successful reclaim + run');
 });
+
+test('concurrent stale-lock reclaimers do not race: 4 processes vs a pre-seeded stale lock, no double-entry', async () => {
+  // Regression test for the non-atomic unlink+rmdir reclaim: with mkdirSync/writeFileSync
+  // used to observe the stale lock and race to reclaim it, two reclaimers could interleave
+  // (C deletes B's fresh lock while B is inside the critical section), letting both B and C
+  // run upsertDigest concurrently and corrupt/lose rows. The fix uses an atomic rename to
+  // ensure exactly one reclaimer wins each stale-lock window.
+  const { env } = tmpEnv();
+  const file = dayFilePath('2026-07-03', env);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const lockDir = `${file}.lock`;
+  const ownerFile = path.join(lockDir, 'owner');
+  fs.mkdirSync(lockDir);
+  fs.writeFileSync(ownerFile, 'stale-owner-token');
+  const old = new Date(Date.now() - 20_000);
+  fs.utimesSync(lockDir, old, old);
+
+  const sessionIds = ['race0', 'race1', 'race2', 'race3'];
+  await Promise.all(sessionIds.map((id) => spawnUpsert(env, id)));
+
+  const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
+  assert.equal(lines.length, 4, `expected 4 lines, got: ${lines.join(' | ')}`);
+  const ids = lines.map((l) => JSON.parse(l).sessionId).sort();
+  assert.deepEqual(ids, sessionIds.slice().sort());
+
+  const dir = path.dirname(file);
+  const entries = fs.readdirSync(dir);
+  assert.ok(!entries.some((e) => e.endsWith('.lock') || e.includes('.stale-')),
+    `unexpected leftover lock/stale dirs: ${entries}`);
+});
