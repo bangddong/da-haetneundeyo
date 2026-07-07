@@ -76,3 +76,18 @@ test('repoAuthorEmail returns null for non-git directory', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-nogit-'));
   assert.equal(repoAuthorEmail(dir), null);
 });
+
+test('repoAuthorEmail falls back to global config when repo has no local email', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
+  execFileSync('git', ['-C', dir, 'init'], { encoding: 'utf8' });
+  const globalCfg = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-cfg-')), 'gitconfig');
+  fs.writeFileSync(globalCfg, '[user]\n\temail = global@t.t\n');
+  const saved = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_GLOBAL = globalCfg;
+  try {
+    assert.equal(repoAuthorEmail(dir), 'global@t.t');
+  } finally {
+    if (saved === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = saved;
+  }
+});
