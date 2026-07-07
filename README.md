@@ -166,6 +166,10 @@ flowchart LR
 
 커밋 귀속 규칙: 세션에 연결되는 커밋은 세션 시간 창(시작~종료) 안에 있으면서, **본인이 작성한 커밋만** 포함합니다 — 저장소의 git `user.email` 기준으로 필터링하며, `config.json`의 `gitAuthor` 값이 있으면 그 값으로 override합니다. 머지 커밋은 제외됩니다(`--no-merges`). 그래도 시간상 겹쳐 애매하게 섞이는 항목은 `⚠️추정` 플래그로 표시되니, 보고서 제출 전 확인해 주세요.
 
+서브에이전트(Task 도구로 위임한 작업)가 수정한 파일도 부모 세션의 `filesEdited`에 병합됩니다 — 서브에이전트 자체의 요청·대화 내용은 노이즈로 간주해 저널에 남기지 않지만, 실제로 수정한 파일 경로는 부모 세션 실적에 반영되어야 커밋 귀속과 보고서 실적이 누락되지 않습니다.
+
+(선택) `config.json`에 `"archive": true`를 설정하면, 스윕 시점마다 `kind=work` 세션의 user/assistant 텍스트만 압축 아카이브로 별도 보관해 원본 transcript 정리 이후에도 원문을 조회할 수 있습니다 — 자세한 내용은 아래 FAQ 참고.
+
 ## 권한 프롬프트에 관하여
 
 - **훅(Stop/SessionStart/SessionEnd)**은 플러그인 설치 동의로 자동 실행되며, 실행마다 별도 권한 프롬프트가 뜨지 않습니다.
@@ -188,6 +192,7 @@ flowchart LR
   Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\da-haetneundeyo"   # Windows PowerShell
   ```
 - 요청 원문에는 2000자를 넘는 붙여넣기나 `(local command` 접두 항목 등 일부 노이즈는 캡처 단계에서 제외되지만, 민감정보 마스킹은 아직 없습니다(확장 포인트). 사내 코드/자격증명이 포함된 대화가 저장될 수 있음을 감안해 주세요.
+- **아카이브(`archive: true`, 기본값 off)를 켠 경우**: `~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`에 세션별 압축 파일이 추가로 쌓입니다. 저널과 달리 **user/assistant 원문 텍스트를 절단 없이(2000자 제한 미적용) 포함**하므로, 저널보다 민감도가 높습니다 — opt-in인 이유이며, git 동기화 시 저널과 동일하게 반드시 비공개 저장소를 사용하고 삭제 시에도 `~/.claude/da-haetneundeyo/` 전체 삭제에 함께 포함됩니다.
 
 ## 알려진 제약 / Known limitations
 
@@ -198,6 +203,47 @@ flowchart LR
 - docx 내보내기는 매칭되지 않는 플레이스홀더를 오류 없이 **빈 문자열로 치환**합니다. `/report setup`으로 등록한 `fields` 매핑 키가 양식의 `{태그}` 이름과 정확히 일치하는지 확인이 필요합니다.
 - 민감정보 자동 마스킹, GitHub/GitLab PR API 연동, Excel/HWP 양식 출력은 MVP 범위 밖입니다.
 - 팀 단위 집계·공유 기능은 없습니다(개인 사용 전제).
+
+### 기록의 한계
+
+저널은 **왜곡은 없지만(모두 원문 발췌), 누락은 있습니다.** 아래 네 가지를 이해하고 쓰세요.
+
+- **(a) 해결 과정(어떻게·왜)은 저장되지 않습니다.** 저널에는 요청·수정 파일·커밋만 남고, 대화로 오간
+  시행착오나 판단 근거는 남지 않습니다. Claude Code의 원본 세션 transcript가 있는 동안(기본 30일)은
+  거기서 복원할 수 있지만, 그 이후에는 아카이브(opt-in, 아래 FAQ 참고)나 커밋 diff로만 보완됩니다.
+- **(b) 맥락 의존 요청("어제 그거")은 보고서 생성 시점에 추정으로 복원됩니다.** 파일 경로·커밋 등
+  정황 증거로 도메인을 추정해 문장을 만들며, 이런 항목에는 항상 `⚠️추정` 플래그가 붙습니다 — 제출 전
+  반드시 확인하세요.
+- **(c) 2000자를 넘는 요청은 앞 300자만 보존됩니다.** 긴 붙여넣기(로그, 코드 전체 등)를 그대로 프롬프트에
+  넣은 경우, 저널에는 앞부분 요약만 남고 나머지는 "…(전체 N자 생략)"으로 표시됩니다.
+- **(d) 다음 패턴은 노이즈로 간주되어 저널에서 완전히 제외됩니다**: `(local command`로 시작하는 항목,
+  `<task-notification>`/`<system-reminder>` 등 시스템 메타 메시지, `[Request interrupted`로 시작하는
+  중단 메시지, 그리고 도구 실행 결과(tool_result)만 있는 메시지.
+
+## FAQ
+
+**Q. 옛날 세션 원문이 안 열려요.**
+
+Claude Code는 세션 transcript를 기본 30일(`cleanupPeriodDays` 설정) 보관 후 정리합니다. 저널(요청 요약·
+파일·커밋)은 그대로 남지만, 원문 전체를 다시 보고 싶을 때 30일이 지났다면 원본 transcript가 이미
+삭제되었을 수 있습니다. 사용 규모에 따라 다르게 대응하세요:
+
+- **가벼운 사용자**: `cleanupPeriodDays`를 90일 등으로 늘려도 무해합니다. 실측 기준 활성 사용자 한 명의
+  월간 transcript 증가량은 약 55MB 수준이라, 보존 기간을 늘려도 디스크 부담이 크지 않습니다.
+- **헤비/멀티에이전트 사용자**: 서브에이전트를 많이 쓰는 등 세션 수·용량이 큰 경우, 보존 기간을 늘리기보다
+  아래 아카이브 옵션을 켜는 것을 권장합니다 — 원본 전체가 아니라 user/assistant 텍스트만 압축 보관하므로
+  용량이 훨씬 작습니다.
+
+아카이브를 켜려면 `~/.claude/da-haetneundeyo/config.json`에 다음을 추가하세요:
+
+```json
+{ "archive": true }
+```
+
+이후 스윕 시점(다음 세션 시작 또는 `/worklog`, `/report` 실행 시)마다 `kind=work`인 세션이
+`~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`로 압축 보관됩니다. 원본 transcript가
+사라진 뒤에도 `journal-cli.mjs archive-read --session <ID> --day <YYYY-MM-DD>`로 다시 불러올 수 있습니다
+(`/recall` 스킬이 이 폴백을 자동으로 시도합니다).
 
 ## 요구사항
 
