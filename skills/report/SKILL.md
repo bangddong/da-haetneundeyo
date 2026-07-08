@@ -20,7 +20,9 @@ description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO>
    ```
-3. `~/.claude/da-haetneundeyo/config.json`을 읽어 `projectMap`, `language`, `docxTemplate`을 확인한다.
+3. `~/.claude/da-haetneundeyo/config.json`을 읽어 `projectMap`, `language`, `docxTemplate`, `reportsDir`을 확인한다.
+   보고서 저장 위치(이하 `<reportsDir>`)는 `config.reportsDir`이 설정되어 있으면 그 디렉토리, 없으면
+   기본값 `~/.claude/da-haetneundeyo/reports/`를 사용한다.
 4. 템플릿 선택: `~/.claude/da-haetneundeyo/templates/`에 사용자 md 템플릿이 있으면 우선, 없으면 `${CLAUDE_PLUGIN_ROOT}/templates/<weekly|monthly>-<language>.md`.
 5. 템플릿의 HTML 주석 지시에 따라 섹션을 작성한다. 원칙:
    - kind=qa 제외. 항목마다 근거(커밋 해시·세션 날짜) 병기.
@@ -38,8 +40,9 @@ description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 
      → "공통 다이얼로그(CommonDialog) 개선 작업 진행 — 커밋 대기 ⏳ ⚠️추정"
      (요청만으로 작업 내용을 특정할 수 없으면 파일 경로에서 도메인을 추정하고 반드시 ⚠️추정 표기)
    ```
-6. 결과를 `~/.claude/da-haetneundeyo/reports/<기간>-<weekly|monthly>.md`로 저장하고 화면에도 출력한다.
+6. 결과를 `<reportsDir>/<기간>-<weekly|monthly>.md`로 저장하고 화면에도 출력한다.
    - `<기간>` 규칙: weekly는 ISO 주차(`2026-W27`), monthly는 `YYYY-MM`(`2026-07`). 명시 기간 인자가 있으면 그대로 사용.
+   - `<reportsDir>`가 아직 없으면 생성한다.
 7. 마지막에 `⚠️추정 항목 N건 — 해당 항목만 확인 후 제출하세요.`를 안내한다.
 
 ## 엣지케이스
@@ -50,7 +53,7 @@ description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 
 
 ## monthly 합성 전략
 
-1. 기간(해당 월) 산출 후, `~/.claude/da-haetneundeyo/reports/`에서 그 달의 `*-weekly.md` 파일을 찾는다.
+1. 기간(해당 월) 산출 후, `<reportsDir>`에서 그 달의 `*-weekly.md` 파일을 찾는다.
 2. **2개 이상**이면 주간보고들을 1차 재료로 삼아 합성한다 — 저널을 처음부터 다시 훑지 않고 이미 작성된
    주간 실적 문장을 재사용/통합한다.
 3. 저널은 **주간보고가 커버하지 않는 날짜 구간만** 보충 로드한다(`--kind work`로 qa 제외):
@@ -74,10 +77,10 @@ description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 
    - 예: fields가 `{ "금주실적": "achievements", "차주계획": "next_plans" }`이면 데이터 JSON은
      `{ "금주실적": "<achievements 섹션 텍스트>", "차주계획": "<next_plans 섹션 텍스트>" }`.
    - ⚠️ docxtemplater는 매칭되지 않은 태그를 **오류 없이 빈 문자열로** 치환한다. 데이터 JSON 키가 양식의 `{태그}` 이름과 정확히 일치하는지 내보내기 전에 확인할 것.
-   - 데이터 JSON은 `~/.claude/da-haetneundeyo/reports/.tmp-docx-data.json`에 UTF-8(BOM 없이)로 쓰고, 성공 후 삭제한다.
+   - 데이터 JSON은 `<reportsDir>/.tmp-docx-data.json`에 UTF-8(BOM 없이)로 쓰고, 성공 후 삭제한다.
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/export-docx.cjs" --template <docxTemplate.path> --data <임시.json> --out <reports/기간.docx>
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/export-docx.cjs" --template <docxTemplate.path> --data <임시.json> --out <reportsDir>/<기간>.docx
    ```
    stdout은 `{"ok":true,"out":"<생성 경로>"}` 형태다. `ok:true` 확인 후 `out` 경로를 사용자에게 안내한다.
 
@@ -86,3 +89,7 @@ description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 
 1. 사용자에게 회사 양식 .docx 경로를 받아 `~/.claude/da-haetneundeyo/templates/`로 복사.
 2. 양식 안에 `{금주실적}`처럼 중괄호 플레이스홀더를 넣도록 안내하고, 각 플레이스홀더가 어떤 섹션(achievements/next_plans/notes)인지 물어 `config.json`의 `docxTemplate: { path, fields }`에 저장.
 3. `projectMap`도 함께 확인: 저널에 등장한 project 경로별로 업무명을 제안하고 사용자가 수정하면 저장.
+4. 보고서 저장 위치(`reportsDir`)도 물어본다. 기본값(`~/.claude/da-haetneundeyo/reports/`)을 유지할지,
+   다른 디렉토리를 쓸지 확인해 `config.json`의 `reportsDir`에 저장한다. **OneDrive 등 클라우드 자동
+   동기화 폴더를 지정하는 경우, 저장되는 보고서에 업무 내용(실적 문장, 커밋 요약 등)이 포함되어
+   그대로 동기화된다는 점을 사용자에게 안내한다.**

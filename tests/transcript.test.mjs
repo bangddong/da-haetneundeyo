@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLine, emptyDigest, applyRecords, finalizeKind } from '../lib/transcript.mjs';
+import { parseLine, emptyDigest, applyRecords, finalizeKind, finalizeProject } from '../lib/transcript.mjs';
 import { userLine, assistantToolUse, queueOp } from './fixtures.mjs';
 
 const build = (lines) => {
   const d = emptyDigest('s1');
   applyRecords(d, lines.map(parseLine).filter(Boolean), { noiseMaxChars: 2000 });
+  finalizeProject(d);
   finalizeKind(d);
   return d;
 };
@@ -83,4 +84,36 @@ test('kind: qa when no edits/commits, work when edits exist', () => {
   d.commits = [{ hash: 'abc1234', subject: 'fix' }];
   finalizeKind(d);
   assert.equal(d.kind, 'work');
+});
+
+test('finalizeProject: cwdWindows tracked per cwd, project = dominant (longest span) cwd', () => {
+  const d = build([
+    userLine('repo A', { cwd: 'D:\\a', timestamp: '2026-07-03T01:00:00Z' }),
+    userLine('repo A 계속', { cwd: 'D:\\a', timestamp: '2026-07-03T01:10:00Z' }), // 10분
+    userLine('repo B', { cwd: 'D:\\b', timestamp: '2026-07-03T02:00:00Z' }),
+    userLine('repo B 계속', { cwd: 'D:\\b', timestamp: '2026-07-03T03:00:00Z' }), // 60분 — 지배적
+  ]);
+  assert.deepEqual(d.cwdWindows, {
+    'D:\\a': { start: '2026-07-03T01:00:00Z', end: '2026-07-03T01:10:00Z' },
+    'D:\\b': { start: '2026-07-03T02:00:00Z', end: '2026-07-03T03:00:00Z' },
+  });
+  assert.equal(d.project, 'D:\\b');
+});
+
+test('finalizeProject: tie in span breaks to the cwd observed last (later end)', () => {
+  const d = emptyDigest('s1');
+  applyRecords(d, [
+    userLine('repo A', { cwd: 'D:\\a', timestamp: '2026-07-03T01:00:00Z' }),
+    userLine('repo A 계속', { cwd: 'D:\\a', timestamp: '2026-07-03T01:10:00Z' }),
+    userLine('repo B', { cwd: 'D:\\b', timestamp: '2026-07-03T02:00:00Z' }),
+    userLine('repo B 계속', { cwd: 'D:\\b', timestamp: '2026-07-03T02:10:00Z' }),
+  ].map(parseLine).filter(Boolean), { noiseMaxChars: 2000 });
+  finalizeProject(d);
+  assert.equal(d.project, 'D:\\b'); // 동일 10분 구간, 마지막 관측은 D:\b
+});
+
+test('finalizeProject: no-op when cwdWindows is empty', () => {
+  const d = emptyDigest('s1');
+  finalizeProject(d);
+  assert.equal(d.project, null);
 });
