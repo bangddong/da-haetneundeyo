@@ -23,7 +23,7 @@ test('collects user requests, cwd, branch, timestamps', () => {
   ]);
   assert.deepEqual(d.requests, ['결재선 조회 버그 고쳐줘', '테스트도 돌려줘']);
   assert.equal(d.turns, 2);
-  assert.equal(d.project, 'D:\\develop\\demo-api');
+  assert.equal(d.project, 'D:\\work\\demo-api');
   assert.equal(d.branch, 'develop');
   assert.equal(d.start, '2026-07-03T01:00:00Z');
   assert.equal(d.end, '2026-07-03T02:00:00Z');

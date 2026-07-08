@@ -18,9 +18,9 @@ test('merges user config over defaults', () => {
   const { env } = tmpEnv();
   fs.mkdirSync(env.DHND_DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(env.DHND_DATA_DIR, 'config.json'),
-    JSON.stringify({ projectMap: { 'D:\\develop\\demo-api': '주문 API' } }));
+    JSON.stringify({ projectMap: { 'D:\\work\\demo-api': '주문 API' } }));
   const cfg = loadConfig(env);
-  assert.equal(cfg.projectMap['D:\\develop\\demo-api'], '주문 API');
+  assert.equal(cfg.projectMap['D:\\work\\demo-api'], '주문 API');
   assert.equal(cfg.language, 'ko');
 });
 

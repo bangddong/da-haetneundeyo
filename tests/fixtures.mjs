@@ -1,7 +1,7 @@
 let n = 0;
 const base = (extra) => ({
   uuid: `u${++n}`, sessionId: 's1', isSidechain: false,
-  timestamp: '2026-07-03T06:50:48.682Z', cwd: 'D:\\develop\\demo-api',
+  timestamp: '2026-07-03T06:50:48.682Z', cwd: 'D:\\work\\demo-api',
   gitBranch: 'develop', ...extra,
 });
 
