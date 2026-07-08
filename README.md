@@ -140,6 +140,13 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <
 1. 회사 업무 보고 양식(.docx) 경로를 물어 `~/.claude/da-haetneundeyo/templates/`로 복사합니다.
 2. 양식 안의 `{금주실적}` 같은 중괄호 플레이스홀더가 어떤 섹션(`achievements`/`next_plans`/`notes`)에 대응하는지 확인해 `config.json`의 `docxTemplate: { path, fields }`에 저장합니다.
 3. 프로젝트 경로 → 업무명 매핑(`projectMap`)도 함께 확인·수정합니다 (예: `demo-api` → "주문 API 백엔드").
+4. 보고서 저장 위치(`reportsDir`)도 확인합니다. 기본값은 `~/.claude/da-haetneundeyo/reports/`이며, `config.json`에 다음과 같이 지정하면 다른 위치에 저장할 수 있습니다:
+
+```json
+{ "reportsDir": "D:\\work-reports" }
+```
+
+> ⚠️ **주의**: `reportsDir`을 OneDrive 등 클라우드 자동 동기화 폴더로 지정하면, 저장되는 보고서(실적 문장·커밋 요약 등 업무 내용 포함)가 그대로 동기화됩니다. 회사 정책상 외부 동기화가 부적절한 내용이 포함될 수 있으니 신중히 선택하세요.
 
 ## 동작 원리
 
@@ -244,6 +251,10 @@ Claude Code는 세션 transcript를 기본 30일(`cleanupPeriodDays` 설정) 보
 `~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`로 압축 보관됩니다. 원본 transcript가
 사라진 뒤에도 `journal-cli.mjs archive-read --session <ID> --day <YYYY-MM-DD>`로 다시 불러올 수 있습니다
 (`/recall` 스킬이 이 폴백을 자동으로 시도합니다).
+
+**Q. 저널·설정·보고서 저장 위치를 통째로 옮기고 싶어요.**
+
+환경변수 `DHND_DATA_DIR`을 지정하면 `~/.claude/da-haetneundeyo/` 전체(저널, 설정, 아카이브, 보고서 기본 위치)를 원하는 경로로 옮길 수 있습니다 — 보고서만 별도로 옮기려면 위 "회사 양식 등록"의 `reportsDir` 설정을 사용하세요.
 
 ## 요구사항
 
