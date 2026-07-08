@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { captureTranscript } from '../lib/capture.mjs';
 import { userLine } from './fixtures.mjs';
 import { tmpEnv } from './helpers.mjs';
+import { loadState, saveState, upsertDigest, dayOf } from '../lib/journal.mjs';
 
 function makeRepo(prefix, authorEmail, commitMsg, commitDateIso) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `dhnd-multicwd-${prefix}-`));
@@ -108,4 +109,55 @@ test('incremental capture across two cwds accumulates cwdWindows and merges comm
   assert.equal(d2.commits.length, 2);
   const subjects = d2.commits.map((c) => c.subject).sort();
   assert.deepEqual(subjects, ['feat: A 커밋', 'feat: B 커밋']);
+});
+
+test('pre-0.1.5 journal digest without cwdWindows field is normalized on reload', () => {
+  const { env } = tmpEnv();
+  const repo = makeRepo('old', 'author@t.t', 'feat: old commit', '2026-07-03T01:30:00Z');
+
+  // Create a pre-0.1.5-style digest (no cwdWindows field)
+  const oldDigest = {
+    sessionId: 's1',
+    project: repo,
+    branch: 'develop',
+    start: '2026-07-03T01:00:00Z',
+    end: '2026-07-03T02:00:00Z',
+    turns: 1,
+    requests: ['repo work'],
+    filesEdited: [],
+    commands: [],
+    commits: [],
+    kind: 'qa',
+    note: null,
+    // cwdWindows is intentionally missing to simulate pre-0.1.5
+  };
+
+  // Write this old digest to the journal
+  const day = '2026-07-03';
+  upsertDigest(oldDigest, env);
+
+  // Set up state to point to the old digest as if a session is in-flight
+  const state = loadState(env);
+  const file = writeTranscript(env, 's1', [
+    userLine('old work', { cwd: repo, timestamp: '2026-07-03T01:00:00Z' }),
+  ]);
+  // The first line's byte offset (simulating that capture has already consumed the old work)
+  const firstLineBytes = Buffer.byteLength(userLine('old work', { cwd: repo, timestamp: '2026-07-03T01:00:00Z' }) + '\n', 'utf8');
+  state.sessions.s1 = { offset: firstLineBytes, day };
+  saveState(state, env);
+
+  // Append a new transcript line after the old offset
+  fs.appendFileSync(file, userLine('new work', { cwd: repo, timestamp: '2026-07-03T02:00:00Z' }) + '\n');
+
+  // captureTranscript should:
+  // 1. Reload the old pre-0.1.5 digest (no cwdWindows)
+  // 2. NOT throw TypeError when applyRecords tries digest.cwdWindows[rec.cwd] ??= {...}
+  // 3. Return a non-null digest with both old and new requests
+  const result = captureTranscript({ sessionId: 's1', transcriptPath: file }, env);
+
+  assert.notEqual(result, null, 'captureTranscript should not return null');
+  assert.ok(result.cwdWindows, 'digest should have cwdWindows field after normalization');
+  assert.ok(result.cwdWindows[repo], `digest.cwdWindows should have entry for ${repo}`);
+  assert.equal(result.requests.length, 2, 'digest should have both old and new requests');
+  assert.ok(result.requests.includes('new work'), 'digest should include the new request');
 });
