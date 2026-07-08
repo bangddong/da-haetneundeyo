@@ -23,14 +23,6 @@ AI(Claude Code)로 대부분의 업무를 진행하면서 개발자는 실행자
 /plugin install da-haetneundeyo
 ```
 
-비공개 기간에는 저장소를 클론 후 로컬 경로로 추가하세요:
-
-```
-git clone <저장소 URL> <로컬 경로>
-/plugin marketplace add <로컬 경로>
-/plugin install da-haetneundeyo
-```
-
 설치 후 새 Claude Code 세션을 시작하면 온보딩 안내가 나옵니다 (아래 참고).
 
 ## 설치 후 첫 사용
@@ -104,7 +96,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <
 ```
 ## 금주 실적
 - 주문 API 백엔드: 사용자 페이징 버그 수정 (b2c3d4e)
-- 주문 시스템 프론트엔드: 대시보드 차트 컴포넌트 추가 ⚠️추정
+- 관리자 웹: 대시보드 차트 컴포넌트 추가 ⚠️추정
 
 ## 차주 계획
 - 대시보드 차트 컴포넌트 마무리 (7/3 세션 미완료)

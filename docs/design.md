@@ -96,7 +96,7 @@ da-haetneundeyo/
 ```json
 {
   "sessionId": "87a50023-...",
-  "project": "D:\\develop\\demo-api",
+  "project": "D:\\work\\demo-api",
   "branch": "develop",
   "start": "2026-07-03T15:50", "end": "2026-07-03T15:57",
   "turns": 9,

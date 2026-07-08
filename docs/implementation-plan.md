@@ -191,9 +191,9 @@ test('merges user config over defaults', () => {
   const { env } = tmpEnv();
   fs.mkdirSync(env.DHND_DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(env.DHND_DATA_DIR, 'config.json'),
-    JSON.stringify({ projectMap: { 'D:\\develop\\demo-api': '주문 API' } }));
+    JSON.stringify({ projectMap: { 'D:\\work\\demo-api': '주문 API' } }));
   const cfg = loadConfig(env);
-  assert.equal(cfg.projectMap['D:\\develop\\demo-api'], '주문 API');
+  assert.equal(cfg.projectMap['D:\\work\\demo-api'], '주문 API');
   assert.equal(cfg.language, 'ko');
 });
 
@@ -293,7 +293,7 @@ git add -A && git commit -m "feat: path resolution and config loading"
 let n = 0;
 const base = (extra) => ({
   uuid: `u${++n}`, sessionId: 's1', isSidechain: false,
-  timestamp: '2026-07-03T06:50:48.682Z', cwd: 'D:\\develop\\demo-api',
+  timestamp: '2026-07-03T06:50:48.682Z', cwd: 'D:\\work\\demo-api',
   gitBranch: 'develop', ...extra,
 });
 
@@ -338,7 +338,7 @@ test('collects user requests, cwd, branch, timestamps', () => {
   ]);
   assert.deepEqual(d.requests, ['결재선 조회 버그 고쳐줘', '테스트도 돌려줘']);
   assert.equal(d.turns, 2);
-  assert.equal(d.project, 'D:\\develop\\demo-api');
+  assert.equal(d.project, 'D:\\work\\demo-api');
   assert.equal(d.branch, 'develop');
   assert.equal(d.start, '2026-07-03T01:00:00Z');
   assert.equal(d.end, '2026-07-03T02:00:00Z');
