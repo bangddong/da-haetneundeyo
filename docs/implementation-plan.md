@@ -1,5 +1,7 @@
 # "다 했는데요?" (da-haetneundeyo) MVP Implementation Plan
 
+> 이 문서는 최초 MVP 설계/계획의 기록이며 이후 릴리스(0.1.x)에서 일부 내용이 개선·대체되었다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Claude Code 세션 transcript를 훅으로 증분 캡처해 작업 일지를 자동 축적하고, 주간/월간 보고서(md/docx)와 과거 작업 검색을 제공하는 플러그인 MVP.
@@ -8,7 +10,7 @@
 
 **Tech Stack:** Node.js ≥ 20 (ESM `.mjs`), `node:test` + `node:assert` (테스트, 의존성 0), esbuild + docxtemplater + pizzip (devDependencies, docx 번들용).
 
-**Spec:** `docs/superpowers/specs/2026-07-03-da-haetneundeyo-design.md`
+**Spec:** `docs/design.md`
 
 ## Global Constraints
 
