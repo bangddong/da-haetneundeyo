@@ -1,89 +1,92 @@
-# 다 했는데요? (da-haetneundeyo)
+# da-haetneundeyo (다 했는데요?)
 
 > Turns your Claude Code sessions into weekly/monthly work reports. It captures what you did — files touched, commands run, commits made — as you work (zero extra tokens), then drafts a report only when you ask for one. Journal data stays local under `~/.claude/da-haetneundeyo/`, in plain JSONL you can read, edit, or delete yourself. MIT licensed.
 
-**한 줄 소개**: Claude Code로 진행한 작업을 자동으로 기록해 주간/월간 업무 보고 초안을 만들어 주는 플러그인입니다.
+**Languages**: English (this file) · [한국어](docs/README.ko.md)
 
 ---
 
-## 왜 필요한가
+## Why
 
-AI(Claude Code)로 대부분의 업무를 진행하면서 개발자는 실행자가 아닌 **검토자**가 되어갑니다. 그 결과 흔히 벌어지는 일:
+When you run most of your work through AI (Claude Code), you gradually shift from *author* to *reviewer*. Common consequences:
 
-- 코드 디테일을 예전만큼 기억하지 못한다.
-- 주간/월간 보고서에 쓸 내용이 빈약하다 — 실제로는 일을 많이 했는데 정리된 기록이 없다.
-- 지난 작업을 확인하려면 대화 기록을 뒤지거나 git log를 헤집어야 한다.
+- You remember code details less well than you used to.
+- Your weekly/monthly reports feel thin — you actually did a lot, but there's no organized record of it.
+- Reviewing past work means digging through conversation history or `git log`.
 
-**다 했는데요?**는 평소처럼 Claude Code를 쓰기만 해도 작업 일지가 자동으로 쌓이고, 필요할 때 주간/월간 보고서 초안과 과거 작업 검색이 가능하도록 만드는 것을 목표로 합니다.
+**da-haetneundeyo** aims to make a work journal accumulate automatically just by using Claude Code as usual, so that weekly/monthly report drafts and past-work search are available whenever you need them.
 
-## 설치
+## Install
 
 ```
 /plugin marketplace add bangddong/da-haetneundeyo
 /plugin install da-haetneundeyo
 ```
 
-설치 후 새 Claude Code 세션을 시작하면 온보딩 안내가 나옵니다 (아래 참고).
+After installing, start a new Claude Code session to see the onboarding notice (below).
 
-## 설치 후 첫 사용
+## First run
 
-### 1. 온보딩 백필 안내
+### 1. Onboarding backfill
 
-플러그인이 처음 실행되면(`SessionStart` 훅) 최근 7일 세션은 자동으로 일지에 반영되고, 다음과 같은 안내가 표시됩니다:
-
-```
-[da-haetneundeyo] "다 했는데요?" 플러그인이 처음 실행되었습니다. 최근 7일 세션을 작업 일지에 반영했습니다.
-프라이버시 고지: 이후 모든 세션의 요청 내용(원문 프롬프트 포함)·수정 파일·커밋 정보가 ~/.claude/da-haetneundeyo 에 로컬 저장됩니다.
-외부 전송은 없으며, 디렉토리 삭제로 완전 제거됩니다 (README 프라이버시 섹션 참고).
-사용자에게 다음을 안내하세요: 백필 전에는 일지와 보고서가 최근 7일만 커버합니다. 지난 30일을 반영하려면
-"node ".../scripts/journal-cli.mjs" backfill --days 30" 실행 (토큰 소모 없음, 최대 1-2분).
-원하는지 한 번만 물어보고, 이후 "오늘 뭐 했지?", "주간보고 만들어줘" 같은 자연어 사용법을 소개하세요.
-```
-
-백필 전에는 최근 7일만 보입니다 — **지난 30일 백필을 권장합니다.** 원하면 승인 한 번으로 지난 30일치 세션이 일지로 편입되어, **설치 당일에도 바로 첫 보고서를 만들 수 있습니다.**
-
-> ⚠️ 주말 직후(월요일 등)에 설치하면 7일 스윕도 주말을 포함하므로, 세션이 거의 없던 경우 일지가 비어 보일 수 있습니다 — 이럴 때도 30일 백필을 권장합니다.
-
-### 2. 오늘/이번 주 작업 일지 조회
+The first time the plugin runs (`SessionStart` hook), the last 7 days of sessions are swept into the journal automatically, and you'll see a notice like:
 
 ```
-오늘 뭐 했지?
-지난주에 뭐 했지?
+[da-haetneundeyo] The "da-haetneundeyo" plugin ran for the first time. Recent 7-day sessions were added to your work journal.
+Privacy notice: from now on, every session's request text (including raw prompts), edited files, and commit info are stored locally under ~/.claude/da-haetneundeyo.
+Nothing is sent externally; deleting the directory removes it completely (see the Privacy section of the README).
 ```
 
-이렇게도 가능: `/worklog`
-
-예시 출력:
+Before backfill, only the last 7 days are visible — **a 30-day backfill is recommended.** With one approval, the last 30 days of sessions are folded into the journal, so **you can produce your first report on install day.**
 
 ```
-📓 7/3 (금) — 세션 3건 (작업 2 · 질의 1), 커밋 2건
-· [demo-api 15:50-15:57] UserController 페이징 버그 수정 → b2c3d4e (kind=work)
-· [admin-web 16:10-16:22] 대시보드 차트 컴포넌트 추가 (kind=work) ⏳ 미완료 추정
-· [demo-api 17:00-17:05] MyBatis 매핑 질의 (kind=qa — 보고서 제외)
+node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" backfill --days 30
 ```
 
-모호한 항목은 자연어로 메모·분류를 보완할 수 있습니다:
+This consumes no tokens and takes up to a minute or two.
+
+> ⚠️ If you install right after a weekend (e.g. on a Monday), the 7-day sweep spans the weekend too, so the journal may look empty if you had few sessions — the 30-day backfill is recommended here as well.
+
+### 2. View today's / this week's journal
 
 ```
-두 번째 항목에 "결재선 버그 건"이라고 메모 달아줘
-세 번째 항목은 질의가 아니라 작업으로 재분류해줘
+What did I do today?
+What did I do last week?
 ```
 
-(참고: 내부적으로는 아래 CLI를 실행합니다)
+Or: `/worklog`
+
+Example output:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" note --session <ID> --day <YYYY-MM-DD> --text "<메모>"
+📓 7/3 (Fri) — 3 sessions (2 work · 1 q&a), 2 commits
+· [demo-api 15:50-15:57] Fixed UserController paging bug → b2c3d4e (kind=work)
+· [admin-web 16:10-16:22] Added dashboard chart component (kind=work) ⏳ likely incomplete
+· [demo-api 17:00-17:05] MyBatis mapping question (kind=qa — excluded from reports)
+```
+
+You can refine ambiguous entries with notes/reclassification in natural language:
+
+```
+Add a note "approval-line bug" to the second entry
+Reclassify the third entry as work, not q&a
+```
+
+(For reference, this runs the following CLI internally)
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" note --session <ID> --day <YYYY-MM-DD> --text "<note>"
 node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <YYYY-MM-DD> --value <work|qa>
 ```
 
-### 3. 주간/월간 업무 보고서 생성
+### 3. Generate a weekly/monthly report
 
 ```
-주간보고 만들어줘
-지난주 주간보고 만들어줘
+Make a weekly report
+Make a report for last week
 ```
 
-이렇게도 가능: `/report weekly`
+Or: `/report weekly`
 
 ```
 /report weekly
@@ -91,89 +94,91 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <
 /report monthly 2026-06
 ```
 
-일지의 `kind=work` 항목을 프로젝트별로 그룹핑해 실적 문장으로 승격하고, 추정이 섞인 항목에는 `⚠️추정` 마커를 붙입니다. 결과는 `~/.claude/da-haetneundeyo/reports/2026-W27-weekly.md`로 저장됩니다. 예시:
+It groups `kind=work` journal entries by project, promotes them into achievement sentences, and marks entries that involved guesswork with a `⚠️추정` (estimated) flag. Results are saved to `~/.claude/da-haetneundeyo/reports/2026-W27-weekly.md`. Example:
 
 ```
-## 금주 실적
-- 주문 API 백엔드: 사용자 페이징 버그 수정 (b2c3d4e)
-- 관리자 웹: 대시보드 차트 컴포넌트 추가 ⚠️추정
+## Achievements
+- Order API backend: fixed user paging bug (b2c3d4e)
+- Admin web: added dashboard chart component ⚠️추정
 
-## 차주 계획
-- 대시보드 차트 컴포넌트 마무리 (7/3 세션 미완료)
+## Next-week plan
+- Finish the dashboard chart component (incomplete in the 7/3 session)
 
-## 특이사항
-없음
+## Notes
+None
 ```
 
-`--format docx`는 회사 양식(.docx)에 값을 채워 넣습니다 — 아래 "회사 양식 등록" 참고. 양식을 등록하지 않았다면 md만 저장하고 `/report setup` 안내가 나옵니다.
+`--format docx` fills your company template (.docx) with the values — see "Register a company template" below. If you haven't registered a template, it saves only the md and points you to `/report setup`.
 
-> **모델 가이드**: 일지 기록·검색 인덱싱은 결정적 코드로 동작해 모델 성능과 무관합니다. 반면 보고서 문장 생성 품질은 모델 영향을 받으므로, `/report`(주간/월간보고) 실행 시에만 Sonnet 이상 모델을 권장합니다 — 주 1회 정도라 비용 부담은 낮습니다.
+> **Model guide**: Journal capture and search indexing run as deterministic code, independent of model quality. Report *sentence generation*, on the other hand, depends on the model — so Sonnet or better is recommended only when running `/report`. That's roughly once a week, so the cost impact is low.
 
-### 4. 과거 작업 검색
-
-```
-그때 SAP 타임아웃 어떻게 고쳤지?
-```
-
-이렇게도 가능: `/recall <질문>`
+### 4. Search past work
 
 ```
-/recall MyBatis 페이징 어떻게 했지
+How did I fix that SAP timeout?
 ```
 
-저널을 ripgrep으로 검색해 인덱스(날짜·프로젝트·요약·커밋해시)를 먼저 보여주고, 원할 때만 커밋 상세(`git show --stat`)나 세션 원문을 추가로 불러옵니다. 이어서 작업하려면 `claude --resume <sessionId>`를 안내합니다.
+Or: `/recall <question>`
 
-## 회사 양식 등록 — `/report setup`
+```
+/recall how did I do MyBatis paging
+```
+
+It searches the journal with ripgrep and shows an index first (date · project · summary · commit hash), then loads commit details (`git show --stat`) or the full session transcript only on request. To continue from a past session, it points you to `claude --resume <sessionId>`.
+
+## Register a company template — `/report setup`
 
 ```
 /report setup
 ```
 
-1. 회사 업무 보고 양식(.docx) 경로를 물어 `~/.claude/da-haetneundeyo/templates/`로 복사합니다.
-2. 양식 안의 `{금주실적}` 같은 중괄호 플레이스홀더가 어떤 섹션(`achievements`/`next_plans`/`notes`)에 대응하는지 확인해 `config.json`의 `docxTemplate: { path, fields }`에 저장합니다.
-3. 프로젝트 경로 → 업무명 매핑(`projectMap`)도 함께 확인·수정합니다 (예: `demo-api` → "주문 API 백엔드").
-4. 보고서 저장 위치(`reportsDir`)도 확인합니다. 기본값은 `~/.claude/da-haetneundeyo/reports/`이며, `config.json`에 다음과 같이 지정하면 다른 위치에 저장할 수 있습니다:
+1. Asks for the path to your company report template (.docx) and copies it to `~/.claude/da-haetneundeyo/templates/`.
+2. Confirms which section (`achievements` / `next_plans` / `notes`) each curly-brace placeholder like `{금주실적}` in the template maps to, and saves it under `docxTemplate: { path, fields }` in `config.json`.
+3. Also confirms/edits the project-path → work-name mapping (`projectMap`) (e.g. `demo-api` → "Order API backend").
+4. Confirms the report output location (`reportsDir`). The default is `~/.claude/da-haetneundeyo/reports/`; you can save elsewhere by setting it in `config.json`:
 
 ```json
 { "reportsDir": "D:\\work-reports" }
 ```
 
-> ⚠️ **주의**: `reportsDir`을 OneDrive 등 클라우드 자동 동기화 폴더로 지정하면, 저장되는 보고서(실적 문장·커밋 요약 등 업무 내용 포함)가 그대로 동기화됩니다. 회사 정책상 외부 동기화가 부적절한 내용이 포함될 수 있으니 신중히 선택하세요.
+> ⚠️ **Caution**: If you point `reportsDir` at a cloud auto-sync folder like OneDrive, the saved reports (which contain work content — achievement sentences, commit summaries, etc.) will be synced as-is. Choose carefully, as this may include content your company policy considers inappropriate for external sync.
 
-## 동작 원리
+## How it works
 
-원칙: **캡처는 결정적(토큰 0), LLM은 조회·보고서 생성 시점에만 호출.** 상주 프로세스 없음.
+Principle: **capture is deterministic (0 tokens); the LLM is invoked only at view/report time.** No resident process.
 
 ```mermaid
 flowchart LR
-    A[Stop 훅\n매 턴마다] -->|증분 파싱(설계 목표, 실제 지연은 Node 기동 시간에 좌우)·토큰 0| J[(저널 JSONL\n~/.claude/da-haetneundeyo/journal/)]
-    B[SessionStart 훅\n세션 시작 시] -->|놓친 세션 재조정 스윕| J
-    C[/worklog, /report 실행/] -->|최종 안전망 스윕| J
-    J --> D{/report, /worklog, /recall}
-    D -->|이 시점에만 LLM 호출| E[보고서 초안 / 일지 뷰 / 검색 결과]
+    A["Stop hook<br/>(every turn)"] -->|"incremental parse · 0 tokens"| J[("Journal JSONL<br/>~/.claude/da-haetneundeyo/journal/")]
+    B["SessionStart hook<br/>(on session start)"] -->|"reconcile sweep for missed sessions"| J
+    C["/worklog, /report run"] -->|"final safety-net sweep"| J
+    J --> D{"/report, /worklog, /recall"}
+    D -->|"LLM invoked only here"| E["report draft / worklog view / search results"]
 ```
 
-3중 안전망으로 세션 유실을 방지합니다:
+> Note: the Stop-hook incremental parse is a design goal of near-zero latency; actual per-turn delay is dominated by Node startup time on your machine.
 
-1. **Stop 훅 (주력)** — 매 턴 종료마다 실행되어 세션별 저장된 오프셋 이후의 새 줄만 증분 파싱, 저널에 세션ID 기준 upsert. 터미널을 강제 종료해도 마지막 완료 턴까지는 이미 저널에 반영됩니다.
-2. **SessionStart 훅 (재조정)** — 새 세션 시작 시 마지막 스윕 이후 변경된 세션을 다시 스캔해 놓친 기록을 회수. 최초 실행 시 온보딩 백필을 제안합니다.
-3. **`/worklog`, `/report` 실행 시 스윕** — 조회·보고서 생성 직전 항상 한 번 더 재조정.
+A triple safety net prevents session loss:
 
-`SessionEnd` 훅은 보너스로 세션 완료 마킹만 수행합니다. upsert는 멱등이라 같은 세션을 여러 번 재처리해도 저널에 중복이 생기지 않습니다.
+1. **Stop hook (primary)** — runs at the end of every turn, incrementally parses only the new lines past the stored per-session offset, and upserts into the journal by session ID. Even if you force-quit the terminal, everything up to the last completed turn is already in the journal.
+2. **SessionStart hook (reconcile)** — on a new session, re-scans sessions changed since the last sweep to recover anything missed. On first run it offers the onboarding backfill.
+3. **Sweep on `/worklog`, `/report`** — one more reconcile pass right before viewing/report generation.
 
-작업 분류(`kind`)는 자동입니다: 세션 중 수정한 파일과 커밋이 모두 없으면 `qa`(보고서에서 기본 제외), 하나라도 있으면 `work`로 분류됩니다. `/worklog`의 `kind` 명령으로 재분류할 수 있습니다.
+The `SessionEnd` hook is a bonus that only marks session completion. Upserts are idempotent, so reprocessing the same session multiple times never creates duplicates in the journal.
 
-커밋 귀속 규칙: 세션에 연결되는 커밋은 세션 시간 창(시작~종료) 안에 있으면서, **본인이 작성한 커밋만** 포함합니다 — 저장소의 git `user.email` 기준으로 필터링하며, `config.json`의 `gitAuthor` 값이 있으면 그 값으로 override합니다. 머지 커밋은 제외됩니다(`--no-merges`). 그래도 시간상 겹쳐 애매하게 섞이는 항목은 `⚠️추정` 플래그로 표시되니, 보고서 제출 전 확인해 주세요.
+Work classification (`kind`) is automatic: if a session has neither edited files nor commits, it's `qa` (excluded from reports by default); if it has either, it's `work`. You can reclassify with the `kind` command in `/worklog`.
 
-서브에이전트(Task 도구로 위임한 작업)가 수정한 파일도 부모 세션의 `filesEdited`에 병합됩니다 — 서브에이전트 자체의 요청·대화 내용은 노이즈로 간주해 저널에 남기지 않지만, 실제로 수정한 파일 경로는 부모 세션 실적에 반영되어야 커밋 귀속과 보고서 실적이 누락되지 않습니다.
+Commit attribution rule: commits linked to a session are those within the session's time window (start–end) **and authored by you** — filtered by the repository's git `user.email`, overridable via the `gitAuthor` value in `config.json`. Merge commits are excluded (`--no-merges`). Entries that still overlap ambiguously in time are flagged `⚠️추정`, so please verify before submitting a report.
 
-(선택) `config.json`에 `"archive": true`를 설정하면, 스윕 시점마다 `kind=work` 세션의 user/assistant 텍스트만 압축 아카이브로 별도 보관해 원본 transcript 정리 이후에도 원문을 조회할 수 있습니다 — 자세한 내용은 아래 FAQ 참고.
+Files edited by subagents (work delegated via the Task tool) are also merged into the parent session's `filesEdited` — the subagent's own requests/conversation are treated as noise and not journaled, but the file paths it actually edited must be reflected in the parent session so commit attribution and report achievements aren't missed.
 
-## 권한 프롬프트에 관하여
+(Optional) Setting `"archive": true` in `config.json` keeps a separate compressed archive of only the user/assistant text of `kind=work` sessions at each sweep, so you can retrieve the original text even after the source transcript is cleaned up — see the FAQ below.
 
-- **훅(Stop/SessionStart/SessionEnd)**은 플러그인 설치 동의로 자동 실행되며, 실행마다 별도 권한 프롬프트가 뜨지 않습니다.
-- 반면 `/worklog`, `/report`, `/recall` **스킬 실행 중의 Bash·파일 쓰기**는 Claude Code의 일반 권한 검사를 그대로 받습니다 — 저널 조회(`journal-cli.mjs`), 검색(`rg`), 커밋 상세 조회(`git show`) 등을 실행할 때마다 승인을 요청받는 것은 **정상 동작**입니다.
-- 매번 승인하기가 번거롭다면 `~/.claude/settings.json`에 다음과 같이 허용 목록을 추가하세요:
+## About permission prompts
+
+- **Hooks (Stop/SessionStart/SessionEnd)** run automatically under your plugin-install consent; they don't raise a separate permission prompt on each run.
+- The **Bash/file-writes during the `/worklog`, `/report`, `/recall` skills**, however, go through Claude Code's normal permission checks — being asked to approve journal reads (`journal-cli.mjs`), search (`rg`), commit details (`git show`), etc. is **normal behavior**.
+- If approving every time is tedious, add an allow-list to `~/.claude/settings.json`:
 
 ```json
 {
@@ -181,79 +186,64 @@ flowchart LR
 }
 ```
 
-## 프라이버시
+## Privacy
 
-- 저널은 `~/.claude/da-haetneundeyo/journal/YYYY/MM/YYYY-MM-DD.jsonl`에 저장되며, **세션별 요청 원문(프롬프트 텍스트)을 포함**합니다.
-- 이 디렉토리를 git으로 동기화(예: 여러 PC 간 백업)하려면 **반드시 비공개(private) 저장소**를 사용하세요. 공개 저장소에 올리면 업무 내용과 대화 원문이 그대로 노출됩니다.
-- 저장 위치는 `~/.claude/da-haetneundeyo/` 전체(저널, 설정, 등록한 양식, 생성된 보고서 포함)이며, **디렉토리를 삭제하면 모든 데이터가 완전히 제거**됩니다. 별도의 삭제 절차는 없습니다.
+- The journal is stored at `~/.claude/da-haetneundeyo/journal/YYYY/MM/YYYY-MM-DD.jsonl` and **includes the raw request text (prompt text) per session**.
+- To sync this directory with git (e.g. to back up across multiple PCs), you **must use a private repository**. Pushing to a public repo exposes your work content and raw conversation.
+- Everything lives under `~/.claude/da-haetneundeyo/` (journal, config, registered templates, generated reports), and **deleting the directory removes all data completely**. There's no separate deletion procedure.
   ```
   rm -rf ~/.claude/da-haetneundeyo/       # macOS/Linux
   Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\da-haetneundeyo"   # Windows PowerShell
   ```
-- 요청 원문에는 2000자를 넘는 붙여넣기나 `(local command` 접두 항목 등 일부 노이즈는 캡처 단계에서 제외되지만, 민감정보 마스킹은 아직 없습니다(확장 포인트). 사내 코드/자격증명이 포함된 대화가 저장될 수 있음을 감안해 주세요.
-- **아카이브(`archive: true`, 기본값 off)를 켠 경우**: `~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`에 세션별 압축 파일이 추가로 쌓입니다. 저널과 달리 **user/assistant 원문 텍스트를 절단 없이(2000자 제한 미적용) 포함**하므로, 저널보다 민감도가 높습니다 — opt-in인 이유이며, git 동기화 시 저널과 동일하게 반드시 비공개 저장소를 사용하고 삭제 시에도 `~/.claude/da-haetneundeyo/` 전체 삭제에 함께 포함됩니다.
+- Some noise is excluded at capture time — pastes over 2000 chars, entries prefixed with `(local command`, etc. — but there is **no sensitive-data masking yet** (an extension point). Assume conversations containing internal code/credentials may be stored.
+- **If you enable the archive (`archive: true`, off by default)**: per-session compressed files accumulate at `~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`. Unlike the journal, these **include user/assistant text untruncated (no 2000-char cap)**, so they're more sensitive than the journal — that's why it's opt-in. When syncing with git, use a private repo just like the journal, and it's removed together when you delete the whole `~/.claude/da-haetneundeyo/` directory.
 
-## 알려진 제약 / Known limitations
+## Known limitations
 
-- **docx 양식 플레이스홀더는 단일 중괄호(`{금주실적}`) 형식**입니다. 양식 문서 본문에 플레이스홀더 용도가 아닌 **리터럴 중괄호**(`{`, `}`)가 있으면:
-  - 짝이 맞지 않으면 내보내기가 **실패**합니다.
-  - 짝이 우연히 맞으면 docxtemplater가 이를 태그로 오인해 **내용이 빈칸으로 치환**될 수 있습니다.
-  - 회사 양식에서는 중괄호를 플레이스홀더 용도로만 사용하세요.
-- docx 내보내기는 매칭되지 않는 플레이스홀더를 오류 없이 **빈 문자열로 치환**합니다. `/report setup`으로 등록한 `fields` 매핑 키가 양식의 `{태그}` 이름과 정확히 일치하는지 확인이 필요합니다.
-- 민감정보 자동 마스킹, GitHub/GitLab PR API 연동, Excel/HWP 양식 출력은 MVP 범위 밖입니다.
-- 팀 단위 집계·공유 기능은 없습니다(개인 사용 전제).
+- **docx template placeholders use single curly braces (`{금주실적}`)**. If the template body contains **literal curly braces** (`{`, `}`) not meant as placeholders:
+  - Unbalanced braces cause the export to **fail**.
+  - Accidentally balanced braces may be mistaken for tags by docxtemplater and **replaced with blanks**.
+  - Use curly braces only for placeholders in your company template.
+- docx export **replaces unmatched placeholders with empty strings without error**. Verify that the `fields` mapping keys you registered via `/report setup` exactly match the `{tag}` names in the template.
+- Automatic sensitive-data masking, GitHub/GitLab PR API integration, and Excel/HWP template output are out of MVP scope.
+- There's no team-level aggregation/sharing (personal use is assumed).
 
-### 기록의 한계
+### Limits of the record
 
-저널은 **왜곡은 없지만(모두 원문 발췌), 누락은 있습니다.** 아래 네 가지를 이해하고 쓰세요.
+The journal has **no distortion (everything is a verbatim excerpt), but it does have gaps.** Understand these four before relying on it.
 
-- **(a) 해결 과정(어떻게·왜)은 저장되지 않습니다.** 저널에는 요청·수정 파일·커밋만 남고, 대화로 오간
-  시행착오나 판단 근거는 남지 않습니다. Claude Code의 원본 세션 transcript가 있는 동안(기본 30일)은
-  거기서 복원할 수 있지만, 그 이후에는 아카이브(opt-in, 아래 FAQ 참고)나 커밋 diff로만 보완됩니다.
-- **(b) 맥락 의존 요청("어제 그거")은 보고서 생성 시점에 추정으로 복원됩니다.** 파일 경로·커밋 등
-  정황 증거로 도메인을 추정해 문장을 만들며, 이런 항목에는 항상 `⚠️추정` 플래그가 붙습니다 — 제출 전
-  반드시 확인하세요.
-- **(c) 2000자를 넘는 요청은 앞 300자만 보존됩니다.** 긴 붙여넣기(로그, 코드 전체 등)를 그대로 프롬프트에
-  넣은 경우, 저널에는 앞부분 요약만 남고 나머지는 "…(전체 N자 생략)"으로 표시됩니다.
-- **(d) 다음 패턴은 노이즈로 간주되어 저널에서 완전히 제외됩니다**: `(local command`로 시작하는 항목,
-  `<task-notification>`/`<system-reminder>` 등 시스템 메타 메시지, `[Request interrupted`로 시작하는
-  중단 메시지, 그리고 도구 실행 결과(tool_result)만 있는 메시지.
+- **(a) The solution process (how/why) is not stored.** The journal keeps only requests, edited files, and commits — not the trial-and-error or reasoning exchanged in conversation. While Claude Code's original session transcript exists (30 days by default) you can recover it from there, but after that only the archive (opt-in, see FAQ) or commit diffs can fill the gap.
+- **(b) Context-dependent requests ("that thing from yesterday") are reconstructed by inference at report time.** Domains are inferred from circumstantial evidence like file paths and commits, and such entries always carry a `⚠️추정` flag — always verify before submitting.
+- **(c) Requests over 2000 chars keep only the first 300.** If you pasted a long block (full logs, entire code, etc.) into a prompt, the journal keeps only the leading summary with the rest shown as "…(전체 N자 생략)".
+- **(d) The following patterns are treated as noise and excluded from the journal entirely**: entries starting with `(local command`, system meta-messages like `<task-notification>` / `<system-reminder>`, interrupt messages starting with `[Request interrupted`, and messages containing only tool results (`tool_result`).
 
 ## FAQ
 
-**Q. 옛날 세션 원문이 안 열려요.**
+**Q. I can't open an old session's original text.**
 
-Claude Code는 세션 transcript를 기본 30일(`cleanupPeriodDays` 설정) 보관 후 정리합니다. 저널(요청 요약·
-파일·커밋)은 그대로 남지만, 원문 전체를 다시 보고 싶을 때 30일이 지났다면 원본 transcript가 이미
-삭제되었을 수 있습니다. 사용 규모에 따라 다르게 대응하세요:
+Claude Code keeps session transcripts for 30 days by default (the `cleanupPeriodDays` setting) then cleans them up. The journal (request summaries, files, commits) remains, but if you want to see the full original text and 30 days have passed, the source transcript may already be deleted. Respond according to your usage scale:
 
-- **가벼운 사용자**: `cleanupPeriodDays`를 90일 등으로 늘려도 무해합니다. 실측 기준 활성 사용자 한 명의
-  월간 transcript 증가량은 약 55MB 수준이라, 보존 기간을 늘려도 디스크 부담이 크지 않습니다.
-- **헤비/멀티에이전트 사용자**: 서브에이전트를 많이 쓰는 등 세션 수·용량이 큰 경우, 보존 기간을 늘리기보다
-  아래 아카이브 옵션을 켜는 것을 권장합니다 — 원본 전체가 아니라 user/assistant 텍스트만 압축 보관하므로
-  용량이 훨씬 작습니다.
+- **Light users**: extending `cleanupPeriodDays` to e.g. 90 days is harmless. Measured monthly transcript growth for one active user is about 55 MB, so extending retention isn't a big disk burden.
+- **Heavy / multi-agent users**: if you have many sessions/volume (e.g. heavy subagent use), enabling the archive option below is recommended over extending retention — it stores only user/assistant text compressed, so it's far smaller.
 
-아카이브를 켜려면 `~/.claude/da-haetneundeyo/config.json`에 다음을 추가하세요:
+To enable the archive, add this to `~/.claude/da-haetneundeyo/config.json`:
 
 ```json
 { "archive": true }
 ```
 
-이후 스윕 시점(다음 세션 시작 또는 `/worklog`, `/report` 실행 시)마다 `kind=work`인 세션이
-`~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`로 압축 보관됩니다. 원본 transcript가
-사라진 뒤에도 `journal-cli.mjs archive-read --session <ID> --day <YYYY-MM-DD>`로 다시 불러올 수 있습니다
-(`/recall` 스킬이 이 폴백을 자동으로 시도합니다).
+From then on, at each sweep (next session start or when `/worklog`, `/report` runs), `kind=work` sessions are archived to `~/.claude/da-haetneundeyo/archive/YYYY/MM/<sessionId>.jsonl.gz`. Even after the source transcript is gone, you can retrieve it with `journal-cli.mjs archive-read --session <ID> --day <YYYY-MM-DD>` (the `/recall` skill tries this fallback automatically).
 
-**Q. 저널·설정·보고서 저장 위치를 통째로 옮기고 싶어요.**
+**Q. I want to move the whole journal/config/reports location.**
 
-환경변수 `DHND_DATA_DIR`을 지정하면 `~/.claude/da-haetneundeyo/` 전체(저널, 설정, 아카이브, 보고서 기본 위치)를 원하는 경로로 옮길 수 있습니다 — 보고서만 별도로 옮기려면 위 "회사 양식 등록"의 `reportsDir` 설정을 사용하세요.
+Set the `DHND_DATA_DIR` environment variable to move all of `~/.claude/da-haetneundeyo/` (journal, config, archive, default report location) to a path of your choice — to move only reports, use the `reportsDir` setting from "Register a company template" above.
 
-## 요구사항
+## Requirements
 
-- Node.js **≥ 20** (Claude Code 실행 환경이면 이미 충족됩니다)
-- Claude Code 최신 버전
-- (선택) `ripgrep`(`rg`) — `/recall` 검색에 사용. 미설치 시 검색이 동작하지 않을 수 있습니다.
+- Node.js **≥ 20** (already satisfied if you're running Claude Code)
+- A recent version of Claude Code
+- (Optional) `ripgrep` (`rg`) — used for `/recall` search. Search may not work if it's not installed.
 
-## 라이선스
+## License
 
-MIT — 자세한 내용은 [LICENSE](./LICENSE) 참고.
+MIT — see [LICENSE](./LICENSE) for details.

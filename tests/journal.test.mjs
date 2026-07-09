@@ -43,6 +43,25 @@ test('readRange spans multiple days, skips corrupt lines', () => {
   assert.deepEqual(all.map((d) => d.sessionId).sort(), ['s1', 's2']);
 });
 
+test('readRange includes a boundary-spanning session started before the window but ended inside it', () => {
+  const { env } = tmpEnv();
+  // 주 경계를 넘긴 장기 세션: 시작 2026-07-03(지난주) → 종료 2026-07-09(조회 주간 안). 시작일 파일은
+  // 2026-07-03.jsonl 이라 [07-06, 07-12] 창 밖이지만, 종료가 창 안이므로 포함되어야 한다 (#19).
+  upsertDigest(digest({ sessionId: 'span', start: '2026-07-03T01:00:00Z', end: '2026-07-09T10:00:00Z' }), env);
+  // 창 이전에 시작·종료해 겹치지 않는 세션은 제외되어야 한다.
+  upsertDigest(digest({ sessionId: 'before', start: '2026-07-01T01:00:00Z', end: '2026-07-01T02:00:00Z' }), env);
+  const got = readRange('2026-07-06', '2026-07-12', env).map((d) => d.sessionId).sort();
+  assert.deepEqual(got, ['span']);
+});
+
+test('readRange excludes a session ending the day before the window, includes one ending on the first day', () => {
+  const { env } = tmpEnv();
+  upsertDigest(digest({ sessionId: 'edge-out', start: '2026-07-04T01:00:00Z', end: '2026-07-05T23:59:59Z' }), env);
+  upsertDigest(digest({ sessionId: 'edge-in', start: '2026-07-04T01:00:00Z', end: '2026-07-06T00:00:01Z' }), env);
+  const got = readRange('2026-07-06', '2026-07-12', env).map((d) => d.sessionId).sort();
+  assert.deepEqual(got, ['edge-in']);
+});
+
 test('state roundtrip and defaults', () => {
   const { env } = tmpEnv();
   assert.deepEqual(loadState(env), { sessions: {}, lastSweepMs: 0 });

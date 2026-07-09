@@ -20,6 +20,11 @@ description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO>
    ```
+   - `range`는 **주 경계를 넘겨 계속된 세션**(시작이 창 이전, 종료가 창 안)도 함께 반환한다.
+     이런 세션은 여러 보고 기간에 걸치므로, 그 세션의 실적은 **`commits[].date`(YYYY-MM-DD)가
+     보고 기간 안에 드는 커밋만** 근거로 쓴다 — 기간 밖 커밋은 그 기간 보고서에 넣지 말 것
+     (직전 기간 보고서에 이미 실렸을 수 있어 중복이 된다). `commits[].date`가 없는 구버전
+     항목은 세션 종료일 기준으로 판단한다.
 3. `~/.claude/da-haetneundeyo/config.json`을 읽어 `projectMap`, `language`, `docxTemplate`, `reportsDir`을 확인한다.
    보고서 저장 위치(이하 `<reportsDir>`)는 `config.reportsDir`이 설정되어 있으면 그 디렉토리, 없으면
    기본값 `~/.claude/da-haetneundeyo/reports/`를 사용한다.
