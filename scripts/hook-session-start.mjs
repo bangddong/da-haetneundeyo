@@ -7,12 +7,14 @@ try {
   const firstRun = !fs.existsSync(statePath(process.env));
   if (firstRun) {
     sweepProjects(process.env, { sinceMs: Date.now() - 7 * 24 * 3600_000 });
+    // additionalContext is an instruction to Claude, not text shown verbatim — so it's written in English
+    // and tells Claude to relay it in the user's language. Keeps the plugin free of hardcoded-locale output.
     const msg = [
-      '[da-haetneundeyo] "다 했는데요?" 플러그인이 처음 실행되었습니다. 최근 7일 세션을 작업 일지에 반영했습니다.',
-      '프라이버시 고지: 이후 모든 세션의 요청 내용(원문 프롬프트 포함)·수정 파일·커밋 정보가 ~/.claude/da-haetneundeyo 에 로컬 저장됩니다. 외부 전송은 없으며, 디렉토리 삭제로 완전 제거됩니다 (README 프라이버시 섹션 참고).',
-      '사용자에게 다음을 안내하세요: 백필 전에는 일지와 보고서가 최근 7일만 커버합니다. 지난 30일을 반영하려면',
-      `"node \\"${process.env.CLAUDE_PLUGIN_ROOT ?? '<plugin>'}/scripts/journal-cli.mjs\\" backfill --days 30" 실행 (토큰 소모 없음, 최대 1-2분).`,
-      '원하는지 한 번만 물어보고, 이후 "오늘 뭐 했지?", "주간보고 만들어줘" 같은 자연어 사용법을 소개하세요.',
+      '[da-haetneundeyo] The "da-haetneundeyo" plugin ran for the first time. Recent 7-day sessions were added to the work journal.',
+      'Privacy notice: from now on, every session\'s request text (including raw prompts), edited files, and commit info are stored locally under ~/.claude/da-haetneundeyo. Nothing is sent externally; deleting the directory removes it completely (see the README Privacy section).',
+      'Present the following to the user, in the user\'s language: before backfill, the journal and reports cover only the last 7 days. To include the last 30 days, run',
+      `"node \\"${process.env.CLAUDE_PLUGIN_ROOT ?? '<plugin>'}/scripts/journal-cli.mjs\\" backfill --days 30" (no token cost, up to 1-2 min).`,
+      'Ask once whether they want this, then introduce natural-language usage like "what did I do today?" / "make a weekly report".',
     ].join(' ');
     process.stdout.write(JSON.stringify({
       hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: msg },

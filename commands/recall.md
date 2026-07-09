@@ -1,5 +1,5 @@
 ---
-description: 과거 작업을 검색합니다
+description: Search past work
 ---
 
-da-haetneundeyo:recall 스킬을 실행하세요. 인자: $ARGUMENTS
+Run the da-haetneundeyo:recall skill. Arguments: $ARGUMENTS

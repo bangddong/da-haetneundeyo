@@ -1,100 +1,129 @@
 ---
 name: report
-description: 작업 일지로 주간/월간 업무 보고서 초안(md/docx)을 생성한다. "주간보고", "월간보고", "report weekly/monthly" 요청 시 사용.
+description: Generate weekly/monthly work-report drafts (md/docx) from the work journal. Use for "weekly report", "monthly report", "주간보고", "월간보고", "report weekly/monthly" requests.
 ---
 
-# 업무 보고서 생성 (report)
+# Work report generation (report)
 
-## 인자
-- `weekly`(기본) | `monthly`, 선택적 `--format docx`, 선택적 기간(예: `2026-W27`, `2026-06`).
-- `setup` 서브커맨드는 아래 "설정" 참고.
+## Arguments
+- `weekly` (default) | `monthly`, optional `--format docx`, optional period (e.g. `2026-W27`, `2026-06`).
+- The `setup` subcommand is covered under "Setup" below.
 
-## 생성 절차
+## Localization
 
-1. 기간 계산:
-   - 명시 기간(`2026-W27`, `2026-06` 등)이 있으면 그것을 사용.
-   - "지난주"/"저번주" → 직전 ISO 주차, "지난달"/"저번달" → 직전 월.
-   - 기간 미지정 weekly: 기본은 이번 주 월~일. 단, **오늘이 월·화요일이면 이번 주엔 보고할 내용이 거의 없으므로 지난주를 기본으로 제안**하고 한 줄로 확인받는다 (예: "지난주(2026-W27, 6/29~7/5) 기준으로 만들까요?").
-   - 기간 미지정 monthly: 기본은 이번 달. 단, 오늘이 1~3일이면 같은 방식으로 지난달을 제안.
-2. 일지 로드 (sweep 자동 포함):
+**Write the report body in `config.language` (default `ko`).** All section text, achievement sentences,
+and plan items follow this language. The markers below are also language-dependent — use the row that
+matches `config.language`:
+
+| Meaning | `ko` | `en` |
+|---|---|---|
+| Inferred/guessed item | `⚠️추정` | `⚠️assumed` |
+| Work done but not yet committed | `⏳ 커밋 대기` | `⏳ pending commit` |
+| Verification footer | `⚠️추정 항목 N건 — 해당 항목만 확인 후 제출하세요.` | `N item(s) marked ⚠️assumed — verify only those before submitting.` |
+
+The bundled templates already carry the correct marker per language (`⚠️추정` in `*-ko.md`,
+`⚠️assumed` in `*-en.md`); keep the report body consistent with the chosen template's marker.
+
+## Procedure
+
+1. Compute the period:
+   - If an explicit period is given (`2026-W27`, `2026-06`, etc.), use it.
+   - "지난주"/"last week" → the previous ISO week; "지난달"/"last month" → the previous month.
+   - Unspecified weekly: default to this week (Mon–Sun). **But if today is Monday/Tuesday there's little to
+     report for this week yet, so propose last week by default** and confirm in one line (e.g. "Build it for
+     last week (2026-W27, 6/29–7/5)?").
+   - Unspecified monthly: default to this month. But if today is the 1st–3rd, propose last month the same way.
+2. Load the journal (sweep is automatic):
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO>
    ```
-   - `range`는 **주 경계를 넘겨 계속된 세션**(시작이 창 이전, 종료가 창 안)도 함께 반환한다.
-     이런 세션은 여러 보고 기간에 걸치므로, 그 세션의 실적은 **`commits[].date`(YYYY-MM-DD)가
-     보고 기간 안에 드는 커밋만** 근거로 쓴다 — 기간 밖 커밋은 그 기간 보고서에 넣지 말 것
-     (직전 기간 보고서에 이미 실렸을 수 있어 중복이 된다). `commits[].date`가 없는 구버전
-     항목은 세션 종료일 기준으로 판단한다.
-3. `~/.claude/da-haetneundeyo/config.json`을 읽어 `projectMap`, `language`, `docxTemplate`, `reportsDir`을 확인한다.
-   보고서 저장 위치(이하 `<reportsDir>`)는 `config.reportsDir`이 설정되어 있으면 그 디렉토리, 없으면
-   기본값 `~/.claude/da-haetneundeyo/reports/`를 사용한다.
-4. 템플릿 선택: `~/.claude/da-haetneundeyo/templates/`에 사용자 md 템플릿이 있으면 우선, 없으면 `${CLAUDE_PLUGIN_ROOT}/templates/<weekly|monthly>-<language>.md`.
-5. 템플릿의 HTML 주석 지시에 따라 섹션을 작성한다. 원칙:
-   - kind=qa 제외. 항목마다 근거(커밋 해시·세션 날짜) 병기.
-   - requests가 모호해 커밋·파일 경로로 추정한 항목은 끝에 `⚠️추정` 마커.
-   - 커밋 없는 work 세션·미해결 요청 → "차주(차월) 계획" 초안.
+   - `range` also returns **sessions that spanned the period boundary** (started before the window, ended
+     inside it). Such a session straddles multiple reporting periods, so base its achievements **only on
+     commits whose `commits[].date` (YYYY-MM-DD) falls within the reporting period** — do not put
+     out-of-period commits in this period's report (they may already appear in the previous period's report,
+     causing duplication). For older entries without `commits[].date`, judge by the session end date.
+3. Read `~/.claude/da-haetneundeyo/config.json` for `projectMap`, `language`, `docxTemplate`, `reportsDir`.
+   The report output location (`<reportsDir>` below) is `config.reportsDir` if set, otherwise the default
+   `~/.claude/da-haetneundeyo/reports/`.
+4. Template selection: prefer a user md template in `~/.claude/da-haetneundeyo/templates/`, otherwise
+   `${CLAUDE_PLUGIN_ROOT}/templates/<weekly|monthly>-<language>.md`.
+5. Write the sections per the template's HTML-comment instructions. Principles:
+   - Exclude `kind=qa`. Cite evidence (commit hash · session date) for every item.
+   - Append the inferred marker (see Localization table) to any item guessed from commits/file paths because
+     the request was ambiguous.
+   - `work` sessions with no commits and unresolved requests → draft into the "next-period plan".
 
-   실적 문장 변환 few-shot (실사례 기반):
+   Achievement-sentence few-shot (based on real cases). **These illustrate the transformation, not the
+   output language** — write your actual output in `config.language`:
    ```
-   예시 1 — 커밋이 근거인 경우:
+   Example 1 — commit is the evidence (ko output):
      requests: ["지금 커밋된거 하나 있는데 이거 다시 스테이지로 내리려면 ?"] + commits: [a1b2c3d "fix: 주문 취소 시 재고 롤백 누락 수정"]
      → "주문 취소 트랜잭션에서 재고 롤백이 누락되던 결함 수정 — 예외 발생 시 롤백 처리 보강 (a1b2c3d)"
-     (요청 원문이 아니라 커밋 메시지·파일이 실적의 본체. 대화체 요청을 그대로 옮기지 말 것)
-   예시 2 — 추정이 필요한 경우:
-     requests: ["어제 그거 이어서"] + filesEdited: [CommonDialog.tsx] + commits: []
-     → "공통 다이얼로그(CommonDialog) 개선 작업 진행 — 커밋 대기 ⏳ ⚠️추정"
-     (요청만으로 작업 내용을 특정할 수 없으면 파일 경로에서 도메인을 추정하고 반드시 ⚠️추정 표기)
+     (The commit message/files are the substance of the achievement, not the raw request. Don't transcribe the conversational request verbatim.)
+   Example 2 — inference required (en output):
+     requests: ["continue that thing from yesterday"] + filesEdited: [CommonDialog.tsx] + commits: []
+     → "Progressed the common dialog (CommonDialog) improvement — ⏳ pending commit ⚠️assumed"
+     (When the request alone can't pin down the work, infer the domain from file paths and always add the inferred marker.)
    ```
-6. 결과를 `<reportsDir>/<기간>-<weekly|monthly>.md`로 저장하고 화면에도 출력한다.
-   - `<기간>` 규칙: weekly는 ISO 주차(`2026-W27`), monthly는 `YYYY-MM`(`2026-07`). 명시 기간 인자가 있으면 그대로 사용.
-   - `<reportsDir>`가 아직 없으면 생성한다.
-7. 마지막에 `⚠️추정 항목 N건 — 해당 항목만 확인 후 제출하세요.`를 안내한다.
+6. Save the result to `<reportsDir>/<period>-<weekly|monthly>.md` and also print it to screen.
+   - `<period>` rule: weekly = ISO week (`2026-W27`), monthly = `YYYY-MM` (`2026-07`). If an explicit period
+     argument was given, use it as-is.
+   - Create `<reportsDir>` if it doesn't exist yet.
+7. End with the verification footer (see Localization table).
 
-## 엣지케이스
+## Edge cases
 
-- **기간 내 저널이 없음**: "해당 기간 기록이 없습니다. 백필 여부/기간을 확인하세요"라고 안내하고, 빈 보고서 파일을 만들지 않는다.
-- **전부 kind=qa**: 실적 섹션에는 "보고할 개발 실적 없음"이라고 쓰고, qa 목록을 참고 자료로 첨부할지 사용자에게 물어본다.
-- **journal-cli가 exit≠0**: stderr에 찍힌 요지를 가공하지 말고 사용자에게 그대로 보여준다.
+- **No journal in the period**: say "No records for this period. Check whether a backfill is needed / the
+  period." and do NOT create an empty report file.
+- **All `kind=qa`**: write "No development achievements to report" in the achievements section, and ask the
+  user whether to attach the qa list as reference material.
+- **journal-cli exits non-zero**: show the gist printed to stderr to the user as-is, without reshaping it.
 
-## monthly 합성 전략
+## Monthly synthesis strategy
 
-1. 기간(해당 월) 산출 후, `<reportsDir>`에서 그 달의 `*-weekly.md` 파일을 찾는다.
-2. **2개 이상**이면 주간보고들을 1차 재료로 삼아 합성한다 — 저널을 처음부터 다시 훑지 않고 이미 작성된
-   주간 실적 문장을 재사용/통합한다.
-3. 저널은 **주간보고가 커버하지 않는 날짜 구간만** 보충 로드한다(`--kind work`로 qa 제외):
+1. After computing the period (the month), find that month's `*-weekly.md` files in `<reportsDir>`.
+2. If there are **2 or more**, synthesize primarily from the weekly reports — reuse/merge the already-written
+   weekly achievement sentences instead of re-scanning the journal from scratch.
+3. Load the journal only for **date ranges the weeklies don't cover** (`--kind work` to exclude qa):
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO> --kind work
    ```
-4. 주간보고가 2개 미만이면 기존 방식대로 월 전체 저널을 로드해 합성한다.
+4. If there are fewer than 2 weeklies, load the whole month's journal and synthesize as usual.
 
-## 개인 프로젝트 분리
+## Separating personal projects
 
-- `config.json`의 `projectMap`에서 값이 정확히 `"(제외)"`인 프로젝트는 **보고서에서 완전히 제외**한다
-  (실적/차주계획 어디에도 등장시키지 않음).
-- `projectMap`에 매핑이 없는(사용자가 아직 업무명을 지정하지 않은) 프로젝트는 무조건 제외하지 말고,
-  "기타 (제출 시 제외 검토)" 섹션으로 분리해 별도로 보여준다 — 업무성 여부를 사용자가 최종 판단하게 한다.
+- Projects whose `projectMap` value in `config.json` is exactly `"(제외)"` are **fully excluded** from the
+  report (they appear nowhere — neither achievements nor next-period plan).
+- Projects with no `projectMap` mapping (the user hasn't named the work yet) are NOT auto-excluded; instead
+  put them in a separate "Other (review before submitting)" section so the user makes the final call on
+  whether they count as work.
 
 ## --format docx
 
-8. config의 `docxTemplate`이 없으면: md만 저장하고 "회사 양식을 등록하려면 `/report setup`"을 안내.
-9. 있으면 데이터 JSON을 다음 규칙으로 만든다. `docxTemplate.fields`는 `{ "docx플레이스홀더": "섹션키" }` 맵이다:
-   - 데이터 JSON의 **키 = 플레이스홀더 이름 그대로**, 값 = 해당 섹션키(achievements/next_plans/notes)로 작성한 섹션 텍스트.
-   - 예: fields가 `{ "금주실적": "achievements", "차주계획": "next_plans" }`이면 데이터 JSON은
-     `{ "금주실적": "<achievements 섹션 텍스트>", "차주계획": "<next_plans 섹션 텍스트>" }`.
-   - ⚠️ docxtemplater는 매칭되지 않은 태그를 **오류 없이 빈 문자열로** 치환한다. 데이터 JSON 키가 양식의 `{태그}` 이름과 정확히 일치하는지 내보내기 전에 확인할 것.
-   - 데이터 JSON은 `<reportsDir>/.tmp-docx-data.json`에 UTF-8(BOM 없이)로 쓰고, 성공 후 삭제한다.
+8. If config has no `docxTemplate`: save md only and point the user to "register a company template with
+   `/report setup`".
+9. If it exists, build the data JSON by these rules. `docxTemplate.fields` is a `{ "docxPlaceholder": "sectionKey" }` map:
+   - The data JSON's **key = the placeholder name exactly**, value = the section text written for that section
+     key (achievements/next_plans/notes).
+   - Example: if fields is `{ "금주실적": "achievements", "차주계획": "next_plans" }`, the data JSON is
+     `{ "금주실적": "<achievements section text>", "차주계획": "<next_plans section text>" }`.
+   - ⚠️ docxtemplater replaces unmatched tags with an **empty string, without error**. Before exporting,
+     verify the data JSON keys exactly match the `{tag}` names in the template.
+   - Write the data JSON to `<reportsDir>/.tmp-docx-data.json` as UTF-8 (no BOM), and delete it after success.
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/export-docx.cjs" --template <docxTemplate.path> --data <임시.json> --out <reportsDir>/<기간>.docx
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/export-docx.cjs" --template <docxTemplate.path> --data <tmp.json> --out <reportsDir>/<period>.docx
    ```
-   stdout은 `{"ok":true,"out":"<생성 경로>"}` 형태다. `ok:true` 확인 후 `out` 경로를 사용자에게 안내한다.
+   stdout is `{"ok":true,"out":"<output path>"}`. After confirming `ok:true`, give the user the `out` path.
 
-## 설정 (/report setup)
+## Setup (/report setup)
 
-1. 사용자에게 회사 양식 .docx 경로를 받아 `~/.claude/da-haetneundeyo/templates/`로 복사.
-2. 양식 안에 `{금주실적}`처럼 중괄호 플레이스홀더를 넣도록 안내하고, 각 플레이스홀더가 어떤 섹션(achievements/next_plans/notes)인지 물어 `config.json`의 `docxTemplate: { path, fields }`에 저장.
-3. `projectMap`도 함께 확인: 저널에 등장한 project 경로별로 업무명을 제안하고 사용자가 수정하면 저장.
-4. 보고서 저장 위치(`reportsDir`)도 물어본다. 기본값(`~/.claude/da-haetneundeyo/reports/`)을 유지할지,
-   다른 디렉토리를 쓸지 확인해 `config.json`의 `reportsDir`에 저장한다. **OneDrive 등 클라우드 자동
-   동기화 폴더를 지정하는 경우, 저장되는 보고서에 업무 내용(실적 문장, 커밋 요약 등)이 포함되어
-   그대로 동기화된다는 점을 사용자에게 안내한다.**
+1. Ask for the company report template (.docx) path and copy it to `~/.claude/da-haetneundeyo/templates/`.
+2. Guide the user to put curly-brace placeholders like `{금주실적}` in the template, ask which section
+   (achievements/next_plans/notes) each maps to, and save it under `docxTemplate: { path, fields }` in
+   `config.json`.
+3. Also confirm `projectMap`: propose a work name per project path seen in the journal and save the user's edits.
+4. Also ask about the report output location (`reportsDir`). Confirm whether to keep the default
+   (`~/.claude/da-haetneundeyo/reports/`) or use another directory, and save it to `reportsDir` in
+   `config.json`. **If they pick a cloud auto-sync folder like OneDrive, warn the user that the saved reports
+   (which contain work content — achievement sentences, commit summaries, etc.) will be synced as-is.**
