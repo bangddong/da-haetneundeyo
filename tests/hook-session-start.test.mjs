@@ -20,7 +20,7 @@ test('first run emits onboarding additionalContext and exits 0', () => {
   const payload = JSON.parse(r.stdout);
   assert.equal(payload.hookSpecificOutput.hookEventName, 'SessionStart');
   assert.match(payload.hookSpecificOutput.additionalContext, /backfill/);
-  assert.match(payload.hookSpecificOutput.additionalContext, /프라이버시/);
+  assert.match(payload.hookSpecificOutput.additionalContext, /Privacy notice/);
 });
 
 test('second run is silent and exits 0', () => {

@@ -1,35 +1,48 @@
 ---
 name: worklog
-description: 오늘/이번 주 작업 일지를 조회하고 항목을 보완한다. 사용자가 "오늘 뭐 했지", "작업 일지", "worklog"를 요청할 때 사용.
+description: View and refine today's / this week's work journal. Use for "what did I do today", "work journal", "worklog", "오늘 뭐 했지", "작업 일지" requests.
 ---
 
-# 작업 일지 (worklog)
+# Work journal (worklog)
 
-## 조회
+**Write output in `config.language` (default `ko`).** Labels and markers below follow this language.
 
-1. 기간 결정: 인자가 없으면 오늘, "week"면 이번 주 월~일, "지난주"/"last week"면 직전 ISO 주차(월~일). 날짜(YYYY-MM-DD)나 기간이 오면 그대로. 주 초(월·화)에 "week" 결과가 1~2건뿐이면 "지난주를 보려면 '지난주'라고 요청하세요"를 한 줄 안내.
-2. 다음을 실행해 일지를 가져온다 (sweep이 자동 포함되어 놓친 세션도 회수된다):
+## View
+
+1. Decide the period: no argument → today; "week" → this week (Mon–Sun); "지난주"/"last week" → the previous
+   ISO week (Mon–Sun); a date (YYYY-MM-DD) or a range → use as-is. Early in the week (Mon/Tue), if "week"
+   returns only 1–2 items, add a one-line hint: "to see last week, ask for '지난주' / 'last week'".
+2. Fetch the journal (sweep is included automatically, so missed sessions are recovered):
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" range --from <FROM> --to <TO>
    ```
-   필요하면 `--kind work|qa`로 필터링할 수 있다 (기본은 `--kind` 생략 = 전체).
-3. 출력 형식 (시간순, 프로젝트는 config.json의 projectMap 이름으로 표시):
+   Filter with `--kind work|qa` if needed (default = no `--kind` = all).
+3. Output format (chronological; show projects by their `projectMap` name from config.json). Use the row
+   matching `config.language`:
+
+   `ko`:
    ```
    📓 7/3 (금) — 세션 N건 (작업 N · 질의 N), 커밋 N건
    · [프로젝트 HH:MM-HH:MM] 요약 한 줄 → 커밋해시 (kind=work)
    · [프로젝트 HH:MM-HH:MM] 요약 한 줄 (질의 — 보고서 제외)
    ```
-   - 요약 한 줄은 requests·filesEdited·commits를 종합해 만들되 추측을 섞지 말 것.
-   - `kind=work`인데 `commits`가 빈 항목에는 `⏳ 미완료 추정` 표시.
-   - `note`가 있으면 요약 대신 note를 우선 사용.
-   - `range`는 조회 기간 이전에 시작해 기간 안까지 이어진 **장기 세션**도 반환한다. 이때 날짜 헤더는
-     세션 시작일 기준이라 조회 기간보다 앞선 날짜로 보일 수 있다 — 정상이며, "○○부터 이어진 세션"처럼
-     한 줄로 표기하면 된다.
+   `en`:
+   ```
+   📓 7/3 (Fri) — N sessions (N work · N q&a), N commits
+   · [project HH:MM-HH:MM] one-line summary → commitHash (kind=work)
+   · [project HH:MM-HH:MM] one-line summary (q&a — excluded from reports)
+   ```
+   - Build the one-line summary from requests · filesEdited · commits combined; don't mix in guesses.
+   - For a `kind=work` item with empty `commits`, mark it: `ko` → `⏳ 미완료 추정`, `en` → `⏳ likely incomplete`.
+   - If `note` exists, use the note instead of the summary.
+   - `range` also returns **long sessions** that started before the queried period and continued into it. Their
+     date header is based on the session start, so it may show a date earlier than the queried period — this is
+     normal; label it in one line (e.g. "session continued from ○○").
 
-## 보완 (사용자가 메모/재분류를 원할 때)
+## Refine (when the user wants a note / reclassification)
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" note --session <ID> --day <YYYY-MM-DD> --text "<메모>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" note --session <ID> --day <YYYY-MM-DD> --text "<note>"
 node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" kind --session <ID> --day <YYYY-MM-DD> --value <work|qa>
 ```
-반환 `{"ok":true}` 확인 후 갱신된 항목만 다시 보여준다.
+After confirming the return `{"ok":true}`, re-show only the updated item.
