@@ -205,7 +205,8 @@ Files edited by subagents (work delegated via the Task tool) are also merged int
   - Accidentally balanced braces may be mistaken for tags by docxtemplater and **replaced with blanks**.
   - Use curly braces only for placeholders in your company template.
 - docx export **replaces unmatched placeholders with empty strings without error**. Verify that the `fields` mapping keys you registered via `/report setup` exactly match the `{tag}` names in the template.
-- Automatic sensitive-data masking, GitHub/GitLab PR API integration, and Excel/HWP template output are out of MVP scope.
+- GitHub PR outcomes are supported opt-in (`"prOutcomes": true` in `config.json`; requires an authenticated `gh` CLI) — merged-PR numbers are attached to report achievements. GitLab and other platforms are out of scope.
+- Automatic sensitive-data masking and Excel/HWP template output are out of MVP scope.
 - There's no team-level aggregation/sharing (personal use is assumed).
 
 ### Limits of the record

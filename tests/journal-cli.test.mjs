@@ -111,3 +111,15 @@ test('range without --kind returns all sessions (existing behavior)', () => {
   const entries = JSON.parse(r.stdout);
   assert.deepEqual(entries.map((d) => d.sessionId).sort(), ['qa1', 'work1']);
 });
+
+test('pr-outcomes: disabled by default with a hint; validates date args', () => {
+  const { env } = tmpEnv();
+  const r = run(env, 'pr-outcomes', '--from', '2026-07-06', '--to', '2026-07-12');
+  assert.equal(r.status, 0);
+  const payload = JSON.parse(r.stdout);
+  assert.equal(payload.ok, false);
+  assert.match(payload.reason, /prOutcomes/);
+  const bad = run(env, 'pr-outcomes', '--from', 'nope');
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /usage/);
+});
