@@ -42,6 +42,42 @@ test('commits include author date (YYYY-MM-DD)', () => {
   assert.equal(commits[0].subject, 'dated');
 });
 
+test('commits include shortstat (files/insertions/deletions)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
+  const g = (...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+  g('init');
+  g('config', 'user.email', 't@t.t');
+  g('config', 'user.name', 't');
+  fs.writeFileSync(path.join(dir, 'a.txt'), 'one\ntwo\nthree\n');
+  fs.writeFileSync(path.join(dir, 'b.txt'), 'x\n');
+  g('add', '-A');
+  g('commit', '-m', 'two files');
+  fs.writeFileSync(path.join(dir, 'a.txt'), 'one\n'); // 2줄 삭제
+  g('add', '-A');
+  g('commit', '-m', 'shrink a');
+  const commits = commitsSince(dir, '2020-01-01T00:00:00Z');
+  const byModified = Object.fromEntries(commits.map((c) => [c.subject, c]));
+  assert.equal(byModified['two files'].files, 2);
+  assert.equal(byModified['two files'].insertions, 4);
+  assert.equal(byModified['two files'].deletions, 0);
+  assert.equal(byModified['shrink a'].files, 1);
+  assert.equal(byModified['shrink a'].deletions, 2);
+});
+
+test('empty commit (no shortstat line) gets zeroed stats', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
+  const g = (...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+  g('init');
+  g('config', 'user.email', 't@t.t');
+  g('config', 'user.name', 't');
+  g('commit', '--allow-empty', '-m', 'empty');
+  const [c] = commitsSince(dir, '2020-01-01T00:00:00Z');
+  assert.equal(c.subject, 'empty');
+  assert.equal(c.files, 0);
+  assert.equal(c.insertions, 0);
+  assert.equal(c.deletions, 0);
+});
+
 test('returns empty array when no commits in window', () => {
   const dir = makeRepo();
   const future = new Date(Date.now() + 86400_000).toISOString();

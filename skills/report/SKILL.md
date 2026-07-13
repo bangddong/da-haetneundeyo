@@ -49,6 +49,10 @@ The bundled templates already carry the correct marker per language (`⚠️추�
    `${CLAUDE_PLUGIN_ROOT}/templates/<weekly|monthly>-<language>.md`.
 5. Write the sections per the template's HTML-comment instructions. Principles:
    - Exclude `kind=qa`. Cite evidence (commit hash · session date) for every item.
+   - `commits[]` may carry size stats (`files`/`insertions`/`deletions`). Use them to (a) rank which
+     work leads each project section (bigger change ≠ always more important, but it's a signal) and
+     (b) optionally annotate scale on major items, e.g. "(3 files, +120/−45)". Skip the annotation for
+     trivial sizes; never fabricate numbers when the fields are absent (pre-existing entries).
    - Append the inferred marker (see Localization table) to any item guessed from commits/file paths because
      the request was ambiguous.
    - `work` sessions with no commits and unresolved requests → draft into the "next-period plan".
