@@ -73,11 +73,19 @@ The bundled templates already carry the correct marker per language (`⚠️추�
      → "Progressed the common dialog (CommonDialog) improvement — ⏳ pending commit ⚠️assumed"
      (When the request alone can't pin down the work, infer the domain from file paths and always add the inferred marker.)
    ```
-6. Save the result to `<reportsDir>/<period>-<weekly|monthly>.md` and also print it to screen.
+6. **PR outcomes (only when `config.prOutcomes` is true)**: run
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/journal-cli.mjs" pr-outcomes --from <FROM> --to <TO>
+   ```
+   The output maps commit hashes to their PRs (`{number, state, merged}`). Append merged-PR evidence
+   to the matching achievement lines, e.g. "(a1b2c3d, PR #12 merged)". If the result is
+   `{ok:false}` (disabled) or a hash is absent (gh unavailable / non-GitHub repo), silently proceed
+   without PR annotations — never block report generation on this step.
+7. Save the result to `<reportsDir>/<period>-<weekly|monthly>.md` and also print it to screen.
    - `<period>` rule: weekly = ISO week (`2026-W27`), monthly = `YYYY-MM` (`2026-07`). If an explicit period
      argument was given, use it as-is.
    - Create `<reportsDir>` if it doesn't exist yet.
-7. End with the verification footer (see Localization table).
+8. End with the verification footer (see Localization table).
 
 ## Edge cases
 
@@ -108,9 +116,9 @@ The bundled templates already carry the correct marker per language (`⚠️추�
 
 ## --format docx
 
-8. If config has no `docxTemplate`: save md only and point the user to "register a company template with
+9. If config has no `docxTemplate`: save md only and point the user to "register a company template with
    `/report setup`".
-9. If it exists, build the data JSON by these rules. `docxTemplate.fields` is a `{ "docxPlaceholder": "sectionKey" }` map:
+10. If it exists, build the data JSON by these rules. `docxTemplate.fields` is a `{ "docxPlaceholder": "sectionKey" }` map:
    - The data JSON's **key = the placeholder name exactly**, value = the section text written for that section
      key (achievements/next_plans/notes).
    - Example: if fields is `{ "금주실적": "achievements", "차주계획": "next_plans" }`, the data JSON is

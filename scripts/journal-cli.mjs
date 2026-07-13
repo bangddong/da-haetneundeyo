@@ -63,6 +63,22 @@ switch (cmd) {
     out({ ok });
     break;
   }
+  case 'pr-outcomes': {
+    const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dayRe.test(args.from ?? '') || !dayRe.test(args.to ?? '')) {
+      console.error('usage: journal-cli pr-outcomes --from YYYY-MM-DD --to YYYY-MM-DD');
+      process.exit(1);
+    }
+    if (!loadConfig(process.env).prOutcomes) {
+      out({ ok: false, reason: 'disabled — set "prOutcomes": true in config.json to enable' });
+      break;
+    }
+    const { collectPrOutcomes } = await import('../lib/github.mjs');
+    const entries = readRange(args.from, args.to, process.env);
+    const { prs } = collectPrOutcomes(entries);
+    out({ ok: true, prs });
+    break;
+  }
   case 'archive-read': {
     const records = readArchive(args.session, args.day, process.env);
     if (records === null) {
@@ -73,6 +89,6 @@ switch (cmd) {
     break;
   }
   default:
-    console.error('usage: journal-cli <sweep|backfill --days N|range --from D --to D [--kind work|qa]|note --session S --day D --text T|kind --session S --day D --value V|archive-read --session S --day D>');
+    console.error('usage: journal-cli <sweep|backfill --days N|range --from D --to D [--kind work|qa]|note --session S --day D --text T|kind --session S --day D --value V|archive-read --session S --day D|pr-outcomes --from D --to D>');
     process.exit(1);
 }
