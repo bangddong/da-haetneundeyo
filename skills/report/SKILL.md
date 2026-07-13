@@ -56,6 +56,10 @@ The bundled templates already carry the correct marker per language (`⚠️추�
    - Append the inferred marker (see Localization table) to any item guessed from commits/file paths because
      the request was ambiguous.
    - `work` sessions with no commits and unresolved requests → draft into the "next-period plan".
+   - `archetype` (quick/standard/deep/marathon, duration-based) refines this: a **deep/marathon
+     session with zero commits is a large work-in-progress** — put it at the top of the next-period
+     plan, not buried. A quick session with a commit is likely a hotfix (one-liner achievement is
+     fine). Field may be absent on older entries.
 
    Achievement-sentence few-shot (illustrative). **These illustrate the transformation, not the
    output language** — write your actual output in `config.language`:

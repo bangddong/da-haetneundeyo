@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLine, emptyDigest, applyRecords, finalizeKind, finalizeProject } from '../lib/transcript.mjs';
+import { parseLine, emptyDigest, applyRecords, finalizeKind, finalizeProject, finalizeArchetype } from '../lib/transcript.mjs';
 import { userLine, assistantToolUse, queueOp } from './fixtures.mjs';
 
 const build = (lines) => {
@@ -116,4 +116,24 @@ test('finalizeProject: no-op when cwdWindows is empty', () => {
   const d = emptyDigest('s1');
   finalizeProject(d);
   assert.equal(d.project, null);
+});
+
+test('finalizeArchetype: duration-based classification (quick/standard/deep/marathon)', () => {
+  const at = (startIso, endIso) => {
+    const d = emptyDigest('s1');
+    d.start = startIso; d.end = endIso;
+    finalizeArchetype(d);
+    return d.archetype;
+  };
+  assert.equal(at('2026-07-03T01:00:00Z', '2026-07-03T01:10:00Z'), 'quick');     // 10분
+  assert.equal(at('2026-07-03T01:00:00Z', '2026-07-03T01:15:00Z'), 'standard');  // 정확히 15분 → standard
+  assert.equal(at('2026-07-03T01:00:00Z', '2026-07-03T02:30:00Z'), 'standard');  // 90분
+  assert.equal(at('2026-07-03T01:00:00Z', '2026-07-03T04:00:00Z'), 'deep');      // 3시간
+  assert.equal(at('2026-07-03T01:00:00Z', '2026-07-03T08:00:00Z'), 'marathon');  // 7시간
+});
+
+test('finalizeArchetype: null when timestamps are missing', () => {
+  const d = emptyDigest('s1');
+  finalizeArchetype(d);
+  assert.equal(d.archetype, null);
 });

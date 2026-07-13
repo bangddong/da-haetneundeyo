@@ -35,6 +35,8 @@ description: View and refine today's / this week's work journal. Use for "what d
    - Build the one-line summary from requests · filesEdited · commits combined; don't mix in guesses.
    - For a `kind=work` item with empty `commits`, mark it: `ko` → `⏳ 미완료 추정`, `en` → `⏳ likely incomplete`.
    - If `note` exists, use the note instead of the summary.
+   - If `archetype` is `deep` or `marathon`, append it to the line (e.g. `(kind=work · marathon)`) —
+     long sessions deserve visual weight. Omit for quick/standard to keep lines clean.
    - `range` also returns **long sessions** that started before the queried period and continued into it. Their
      date header is based on the session start, so it may show a date earlier than the queried period — this is
      normal; label it in one line (e.g. "session continued from ○○").
