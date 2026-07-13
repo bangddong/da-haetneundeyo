@@ -103,14 +103,18 @@ da-haetneundeyo/
   "requests": ["사용자 요청 원문(노이즈 필터 적용)"],
   "filesEdited": ["src/.../UserController.java"],
   "commands": ["gradlew test"],
-  "commits": [{ "hash": "b2c3d4e", "subject": "config : ..." }],
-  "kind": "work | qa | mixed",
-  "note": "(사용자가 /worklog에서 추가한 보완 메모)"
+  "commits": [{ "hash": "b2c3d4e", "date": "2026-07-03", "subject": "config : ...", "files": 3, "insertions": 120, "deletions": 45 }],
+  "kind": "work | qa",
+  "archetype": "quick | standard | deep | marathon",
+  "note": "(사용자가 /worklog에서 추가한 보완 메모)",
+  "cwdWindows": { "D:\\work\\demo-api": { "start": "...", "end": "..." } }
 }
 ```
 
 - `kind` 자동 분류 규칙: `filesEdited`와 `commits`가 모두 비어 있으면 `qa`(보고서 기본 제외), 파일 수정 또는 커밋이 있으면 `work`. 사용자가 `/worklog`에서 재분류 가능.
-- `commits`: 캡처 시 `git -C <cwd> log --since=<세션시작>` 대조로 결합 — 세션 × git 결합의 핵심.
+- `archetype`: 지속시간 기반 보조 축 — <15분 quick, <2시간 standard, <6시간 deep, 이상 marathon. deep/marathon인데 커밋이 없으면 대형 WIP 신호로 보고서 차주계획에 활용.
+- `commits`: 캡처 시 cwd별 세션 시간 창 × `git log --since/--until --author --no-merges --shortstat` 대조로 결합 — 세션 × git 결합의 핵심. `date`(author date)는 주 경계를 넘긴 세션의 기간별 커밋 필터용, `files/insertions/deletions`는 실적의 정량 근거.
+- 날짜 의미론: 저장 파일 키는 UTC 날짜지만, `range` 조회와 note/kind 대상 탐색은 **머신 로컬 날짜**(로컬 자정 경계) 기준 — KST 새벽 세션도 "오늘"에 잡힌다. 특수 환경은 `DHND_UTC_OFFSET_MIN` env로 오프셋을 고정할 수 있다.
 - 파일 기반 선택 이유: 네이티브 의존성 제로(Windows 안전), 사람이 직접 읽고 수정 가능, ripgrep 검색으로 충분(세션당 1줄 규모), 개인 git 저장소로 PC 간 동기화 가능. 수년치 누적 시 필요하면 인덱스 추가.
 
 ### JSONL 파싱 원칙 (선행 프로젝트 공통 교훈)

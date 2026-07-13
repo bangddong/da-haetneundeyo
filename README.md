@@ -166,9 +166,11 @@ A triple safety net prevents session loss:
 
 The `SessionEnd` hook is a bonus that only marks session completion. Upserts are idempotent, so reprocessing the same session multiple times never creates duplicates in the journal.
 
-Work classification (`kind`) is automatic: if a session has neither edited files nor commits, it's `qa` (excluded from reports by default); if it has either, it's `work`. You can reclassify with the `kind` command in `/worklog`.
+Work classification (`kind`) is automatic: if a session has neither edited files nor commits, it's `qa` (excluded from reports by default); if it has either, it's `work`. You can reclassify with the `kind` command in `/worklog`. Each session also gets a duration-based `archetype` — quick (<15 min) / standard (<2 h) / deep (<6 h) / marathon — which reports use as a signal (e.g. a marathon session with zero commits is a large work-in-progress and leads the next-week plan).
 
-Commit attribution rule: commits linked to a session are those within the session's time window (start–end) **and authored by you** — filtered by the repository's git `user.email`, overridable via the `gitAuthor` value in `config.json`. Merge commits are excluded (`--no-merges`). Entries that still overlap ambiguously in time are flagged `⚠️추정`, so please verify before submitting a report.
+Dates are **local**: journal queries ("what did I do today", report periods) follow your machine's local midnight, so a session started at 1 a.m. counts as today, not yesterday (UTC).
+
+Commit attribution rule: commits linked to a session are those within the session's time window (start–end) **and authored by you** — filtered by the repository's git `user.email`, overridable via the `gitAuthor` value in `config.json`. Merge commits are excluded (`--no-merges`). Each commit also carries its date and size stats (files changed, insertions/deletions via `--shortstat`), which reports use as quantitative evidence. Entries that still overlap ambiguously in time are flagged `⚠️추정`, so please verify before submitting a report.
 
 Files edited by subagents (work delegated via the Task tool) are also merged into the parent session's `filesEdited` — the subagent's own requests/conversation are treated as noise and not journaled, but the file paths it actually edited must be reflected in the parent session so commit attribution and report achievements aren't missed.
 
