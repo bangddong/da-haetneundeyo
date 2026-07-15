@@ -125,8 +125,9 @@ test('repoToplevel resolves repo root from a nested directory', () => {
   fs.mkdirSync(sub, { recursive: true });
   const top = repoToplevel(sub);
   assert.ok(top, 'toplevel should be found');
-  // git은 realpath·슬래시 정규화된 경로를 돌려주므로 동일 변환 후 비교한다.
-  assert.equal(path.resolve(top).toLowerCase(), fs.realpathSync(dir).toLowerCase());
+  // git은 realpath·슬래시 정규화된 긴 경로를 돌려준다. Windows CI의 tmpdir은 8.3 단축
+  // 경로(RUNNERA~1)라 realpathSync로는 안 풀리므로 native로 확장해 비교한다.
+  assert.equal(path.resolve(top).toLowerCase(), fs.realpathSync.native(dir).toLowerCase());
 });
 
 test('repoToplevel returns null for non-git and nonexistent directories', () => {
