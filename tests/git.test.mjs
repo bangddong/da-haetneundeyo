@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { commitsSince, repoAuthorEmail } from '../lib/git.mjs';
+import { commitsSince, repoAuthorEmail, repoToplevel } from '../lib/git.mjs';
 
 function makeRepo() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-git-'));
@@ -117,6 +117,23 @@ test('author filter: only matching author commits are returned', () => {
   const commits = commitsSince(dir, '2020-01-01T00:00:00Z', undefined, 'a@t.t');
   assert.equal(commits.length, 1);
   assert.equal(commits[0].subject, 'from-a');
+});
+
+test('repoToplevel resolves repo root from a nested directory', () => {
+  const dir = makeRepo();
+  const sub = path.join(dir, 'src', 'deep');
+  fs.mkdirSync(sub, { recursive: true });
+  const top = repoToplevel(sub);
+  assert.ok(top, 'toplevel should be found');
+  // git은 realpath·슬래시 정규화된 긴 경로를 돌려준다. Windows CI의 tmpdir은 8.3 단축
+  // 경로(RUNNERA~1)라 realpathSync로는 안 풀리므로 native로 확장해 비교한다.
+  assert.equal(path.resolve(top).toLowerCase(), fs.realpathSync.native(dir).toLowerCase());
+});
+
+test('repoToplevel returns null for non-git and nonexistent directories', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-nogit-'));
+  assert.equal(repoToplevel(dir), null);
+  assert.equal(repoToplevel(path.join(dir, 'ghost')), null);
 });
 
 test('repoAuthorEmail returns configured user.email', () => {

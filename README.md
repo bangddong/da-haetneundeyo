@@ -172,6 +172,8 @@ Dates are **local**: journal queries ("what did I do today", report periods) fol
 
 Commit attribution rule: commits linked to a session are those within the session's time window (start–end) **and authored by you** — filtered by the repository's git `user.email`, overridable via the `gitAuthor` value in `config.json`. Merge commits are excluded (`--no-merges`). Each commit also carries its date and size stats (files changed, insertions/deletions via `--shortstat`), which reports use as quantitative evidence. Entries that still overlap ambiguously in time are flagged `⚠️추정`, so please verify before submitting a report.
 
+Sessions run from a multi-project workspace root (a directory that is not itself a git repository but contains several) are also covered: when a session's cwd is not a repo, the plugin infers which child repositories you touched from the edited file paths and collects commits from those repos for the same time window.
+
 Files edited by subagents (work delegated via the Task tool) are also merged into the parent session's `filesEdited` — the subagent's own requests/conversation are treated as noise and not journaled, but the file paths it actually edited must be reflected in the parent session so commit attribution and report achievements aren't missed.
 
 (Optional) Setting `"archive": true` in `config.json` keeps a separate compressed archive of only the user/assistant text of `kind=work` sessions at each sweep, so you can retrieve the original text even after the source transcript is cleaned up — see the FAQ below.
