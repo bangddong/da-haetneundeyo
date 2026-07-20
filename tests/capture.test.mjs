@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { captureTranscript, sweepProjects } from '../lib/capture.mjs';
-import { findDigest, loadState } from '../lib/journal.mjs';
+import { findDigest, loadState, saveState } from '../lib/journal.mjs';
 import { userLine, assistantToolUse } from './fixtures.mjs';
 import { tmpEnv } from './helpers.mjs';
 
@@ -75,13 +75,52 @@ test('complete flag marks digest completed', () => {
   assert.equal(d.completed, true);
 });
 
-test('caches resolved repo author email into state.authors', () => {
+test('does not persist a resolved author cache to state.json', () => {
+  // The author cache is process-scoped, not persisted: a stored cache would
+  // never notice a repo whose git user.email later changes, silently
+  // dropping that repo's commits from every future report.
   const { env } = tmpEnv();
   const repoDir = makeRepo();
   const file = writeTranscript(env, 's1', [userLine('버그 고쳐줘', { cwd: repoDir })]);
   captureTranscript({ sessionId: 's1', transcriptPath: file }, env);
-  const state = loadState(env);
-  assert.equal(state.authors[repoDir], 'repo-author@t.t');
+  assert.equal(loadState(env).authors, undefined);
+});
+
+test('ignores a stale persisted author and re-resolves from the repo', () => {
+  const { env } = tmpEnv();
+  // Commit dated inside the session window (01:00–03:00) authored by
+  // repo-author@t.t.
+  const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dhnd-capture-git-'));
+  const g = (args, extraEnv) => execFileSync('git', ['-C', repoDir, ...args], {
+    encoding: 'utf8', env: { ...process.env, ...extraEnv },
+  });
+  g(['init']);
+  g(['config', 'user.email', 'repo-author@t.t']);
+  g(['config', 'user.name', 'repo-author']);
+  fs.writeFileSync(path.join(repoDir, 'a.txt'), '1');
+  g(['add', '-A']);
+  g(['commit', '-m', 'feat: 초기 커밋'], {
+    GIT_COMMITTER_DATE: '2026-07-03T02:00:00Z', GIT_AUTHOR_DATE: '2026-07-03T02:00:00Z',
+  });
+  // Simulate a legacy state.json holding a now-wrong cached author.
+  saveState({ sessions: {}, lastSweepMs: 0, authors: { [repoDir]: 'moved-on@t.t' } }, env);
+  const file = writeTranscript(env, 's1', [
+    userLine('버그 고쳐줘', { cwd: repoDir, timestamp: '2026-07-03T01:00:00Z' }),
+    userLine('마무리', { cwd: repoDir, timestamp: '2026-07-03T03:00:00Z' }),
+  ]);
+  const d = captureTranscript({ sessionId: 's1', transcriptPath: file }, env);
+  // The commit is attributed only if the current repo email was used, not
+  // the stale cache (which would filter it out via --author).
+  assert.equal(d.commits.length, 1);
+  assert.equal(d.commits[0].subject, 'feat: 초기 커밋');
+});
+
+test('strips a legacy authors key from state.json on next capture', () => {
+  const { env } = tmpEnv();
+  saveState({ sessions: {}, lastSweepMs: 0, authors: { '/old/repo': 'x@t.t' } }, env);
+  const file = writeTranscript(env, 's1', [userLine('버그 고쳐줘')]);
+  captureTranscript({ sessionId: 's1', transcriptPath: file }, env);
+  assert.equal(loadState(env).authors, undefined);
 });
 
 test('sweepProjects picks up unprocessed transcripts, skips agent-*.jsonl', () => {
